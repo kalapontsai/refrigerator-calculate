@@ -167,8 +167,8 @@ function calcCompressor() {
   document.getElementById('disp_ODP').textContent = refData?.ODP || 0;
   document.getElementById('disp_comp_type').textContent = result.compressorDesc;
 
-  // 儲存
-  s.compressor = { T_cond, T_evap, refrigerant: ref, ...result };
+  // 儲存（注意：報告頁讀取 T_cond_C / T_evap_C）
+  s.compressor = { T_cond_C: T_cond, T_evap_C: T_evap, refrigerant: ref, ...result };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 

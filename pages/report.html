@@ -157,12 +157,22 @@ function generateReport() {
     document.getElementById('r_HP').textContent = s.compressor.P_HP + ' HP';
     document.getElementById('r_P_in').textContent = s.compressor.P_input_W + ' W';
     document.getElementById('r_COP').textContent = s.compressor.COP_actual;
+    const runtime = (s.F?.Ti && s.F.Ti < 0) ? 0.55 : 0.40;
+    const AE_est = (parseFloat(s.compressor.P_input_W) / 1000) * 24 * 365 * runtime;
+    document.getElementById('r_AE').textContent = Math.round(AE_est) + ' kWh/年';
   }
 
   // Step 4
   if (s.energy) {
     document.getElementById('r_AE_final').textContent = s.energy.AE_kWh_year + ' kWh/年';
     document.getElementById('r_Erp').textContent = `EEI ${s.energy.EEI}`;
+    if (s.energy.MEPS) {
+      const m = s.energy.MEPS;
+      const passStr = m.pass ? '合格' : '不合格';
+      document.getElementById('r_MEPS').textContent = `E.F.=${m.EF_actual} / 基準=${m.EF_base}（${m.ratio_pct}%）→ ${passStr}`;
+    } else {
+      document.getElementById('r_MEPS').textContent = '-';
+    }
     document.getElementById('r_per_L').textContent = s.energy.per_L + ' kWh/L/年';
   }
 }

@@ -308,7 +308,9 @@ function calcEnergy() {
   document.getElementById('r_per_L').textContent = per_L.toFixed(2) + ' kWh/L/年';
 
   // 儲存
-  s.energy = { AE_kWh_year: Math.round(AE_kWh_year), runtime_factor, per_L: per_L.toFixed(2), EEI: EEI.toFixed(0) };
+  s.energy = { AE_kWh_year: Math.round(AE_kWh_year), runtime_factor, per_L: per_L.toFixed(2), EEI: EEI.toFixed(0),
+    MEPS: { V_eq: tw.V_eq, EF_actual: tw.EF_actual, EF_base: tw.EF_base, ratio_pct: tw.ratio_pct, pass: tw.pass, V_R: tw_V_R, V_F: tw_V_F, star: tw_star, isFanCooled: tw_cool }
+  };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 
