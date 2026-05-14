@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 1 冰箱尺寸與隔熱 - 冰箱制冷能力計算系統</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .chamber-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .chamber-tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 6px; font-weight: 700; background: #e8e8e8; transition: all 0.2s; }
+    .chamber-tab.active { background: linear-gradient(135deg,#1a3c6e,#2a5298); color: white; }
+    .chamber-panel { display: none; }
+    .chamber-panel.active { display: block; }
+    .section { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .section-title { font-size: 1em; font-weight: 700; color: #1a3c6e; margin-bottom: 12px; border-bottom: 2px solid #1a3c6e; padding-bottom: 6px; }
+    .result-big { text-align: center; padding: 16px; background: linear-gradient(135deg,#1a3c6e,#2a5298); color: white; border-radius: 8px; margin-bottom: 12px; }
+    .result-big .vol-display { font-size: 1.6em; font-weight: 800; }
+    .result-big .vol-label { font-size: 0.85em; opacity: 0.85; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .result-item { background: #f5f7ff; padding: 8px 12px; border-radius: 6px; }
+    .result-item .label { font-size: 0.75em; color: #666; }
+    .result-item .value { font-size: 1.1em; font-weight: 700; color: #1a3c6e; }
+    .info-box { background: #f0f4ff; border-left: 4px solid #2a5298; padding: 8px 12px; font-size: 0.85em; border-radius: 0 6px 6px 0; margin-top: 8px; }
+    .r-section { border-top: 4px solid #4a90d9; }
+    .f-section { border-top: 4px solid #2d6a9f; }
+    .total-section { border-top: 4px solid #28a745; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Step 1：冰箱尺寸與隔熱設計</h1>
+
+  <!-- 切換 Tab -->
+  <div class="chamber-tabs">
+    <div class="chamber-tab active" onclick="switchTab('R')">冷藏室 (R)</div>
+    <div class="chamber-tab" onclick="switchTab('F')">冷凍室 (F)</div>
+    <div class="chamber-tab" onclick="switchTab('total')">組合總覽</div>
+  </div>
+
+  <!-- ===== 共用：外部總尺寸 ===== -->
+  <div class="section">
+    <div class="section-title">外部總尺寸</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>寬度 (mm)</label>
+        <input type="number" id="width_mm" value="700" step="1" min="200" max="1200">
+      </div>
+      <div class="input-group">
+        <label>深度 (mm)</label>
+        <input type="number" id="depth_mm" value="650" step="1" min="200" max="1000">
+      </div>
+      <div class="input-group">
+        <label>高度 (mm)</label>
+        <input type="number" id="height_mm" value="1850" step="1" min="400" max="2200">
+      </div>
+    </div>
+    <div class="info-box">
+      請先輸入冰箱外部總尺寸。冷藏室與冷凍室的容積將依高度比例自動分配。<br>
+      <b>高度比例分配：</b>冷藏室 = 您設定的百分比，冷凍室 = 剩餘空間（扣除12%機構空間後）
+    </div>
+  </div>
+
+  <!-- ===== 冷藏室設定 ===== -->
+  <div id="panel-R" class="chamber-panel active">
+    <div class="section r-section">
+      <div class="section-title">冷藏室 (R) 參數</div>
+      <div class="input-group">
+        <label>庫內溫度 T<sub>i</sub> (°C)</label>
+        <input type="number" id="R_Ti" value="5" step="1" min="-5" max="20">
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>隔熱厚度 (mm)</label>
+          <input type="number" id="R_ins_mm" value="45" step="1" min="10" max="150">
+        </div>
+        <div class="input-group">
+          <label>隔熱材類型</label>
+          <select id="R_ins_type">
+            <option value="PU foam">PU foam (λ=0.022)</option>
+            <option value="PU foam (cyclopentane)" selected>PU foam 環戊烷 (λ=0.021)</option>
+            <option value="VIP">VIP (λ=0.005)</option>
+            <option value="EPS">EPS (λ=0.034)</option>
+            <option value="XPS">XPS (λ=0.029)</option>
+          </select>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>每日開門次數</label>
+          <input type="number" id="R_open_times" value="20" step="1" min="0" max="100">
+        </div>
+        <div class="input-group">
+          <label>每次開門時間 (min)</label>
+          <input type="number" id="R_open_min" value="0.5" step="0.1" min="0.1" max="5">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>照明功率 (W)</label>
+          <input type="number" id="R_light_W" value="5" step="1" min="0" max="20">
+        </div>
+        <div class="input-group">
+          <label>風扇功率 (W)</label>
+          <input type="number" id="R_fan_W" value="5" step="1" min="0" max="30">
+        </div>
+        <div class="input-group">
+          <label>除霜峰值 (W)</label>
+          <input type="number" id="R_defrost_W" value="150" step="10" min="0" max="500">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>每日除霜次數</label>
+          <input type="number" id="R_defrost_times" value="2" step="1" min="0" max="10">
+        </div>
+        <div class="input-group">
+          <label>每次除霜時間 (min)</label>
+          <input type="number" id="R_defrost_min" value="20" step="1" min="0" max="60">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>門面積比例</label>
+        <input type="number" id="R_door_ratio" value="0.70" step="0.05" min="0.3" max="1.0">
+      </div>
+    </div>
+
+    <div class="result-big">
+      <div class="vol-display" id="R_vol_display">- L</div>
+      <div class="vol-label">冷藏室容積</div>
+    </div>
+    <div class="result-grid">
+      <div class="result-item">
+        <div class="label">內部尺寸</div>
+        <div class="value" id="R_inner_dims">-</div>
+      </div>
+      <div class="result-item">
+        <div class="label">表面積</div>
+        <div class="value" id="R_A_total">- m²</div>
+      </div>
+      <div class="result-item">
+        <div class="label">U值（牆壁）</div>
+        <div class="value" id="R_U_wall">- W/(m²·K)</div>
+      </div>
+      <div class="result-item">
+        <div class="label">防結露最小厚度</div>
+        <div class="value" id="R_min_ins">- mm</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 冷凍室設定 ===== -->
+  <div id="panel-F" class="chamber-panel">
+    <div class="section f-section">
+      <div class="section-title">冷凍室 (F) 參數</div>
+      <div class="input-group">
+        <label>庫內溫度 T<sub>i</sub> (°C)</label>
+        <input type="number" id="F_Ti" value="-18" step="1" min="-35" max="-6">
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>隔熱厚度 (mm)</label>
+          <input type="number" id="F_ins_mm" value="60" step="1" min="10" max="200">
+        </div>
+        <div class="input-group">
+          <label>隔熱材類型</label>
+          <select id="F_ins_type">
+            <option value="PU foam">PU foam (λ=0.022)</option>
+            <option value="PU foam (cyclopentane)" selected>PU foam 環戊烷 (λ=0.021)</option>
+            <option value="VIP">VIP (λ=0.005)</option>
+            <option value="EPS">EPS (λ=0.034)</option>
+            <option value="XPS">XPS (λ=0.029)</option>
+          </select>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>每日開門次數</label>
+          <input type="number" id="F_open_times" value="5" step="1" min="0" max="50">
+        </div>
+        <div class="input-group">
+          <label>每次開門時間 (min)</label>
+          <input type="number" id="F_open_min" value="0.3" step="0.1" min="0.1" max="5">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>照明功率 (W)</label>
+          <input type="number" id="F_light_W" value="0" step="1" min="0" max="10">
+        </div>
+        <div class="input-group">
+          <label>風扇功率 (W)</label>
+          <input type="number" id="F_fan_W" value="2" step="1" min="0" max="20">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>門面積比例</label>
+        <input type="number" id="F_door_ratio" value="0.70" step="0.05" min="0.3" max="1.0">
+      </div>
+    </div>
+
+    <div class="result-big">
+      <div class="vol-display" id="F_vol_display">- L</div>
+      <div class="vol-label">冷凍室容積</div>
+    </div>
+    <div class="result-grid">
+      <div class="result-item">
+        <div class="label">內部尺寸</div>
+        <div class="value" id="F_inner_dims">-</div>
+      </div>
+      <div class="result-item">
+        <div class="label">表面積</div>
+        <div class="value" id="F_A_total">- m²</div>
+      </div>
+      <div class="result-item">
+        <div class="label">U值（牆壁）</div>
+        <div class="value" id="F_U_wall">- W/(m²·K)</div>
+      </div>
+      <div class="result-item">
+        <div class="label">防結露最小厚度</div>
+        <div class="value" id="F_min_ins">- mm</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 環境參數（兩室共用）===== -->
+  <div class="section">
+    <div class="section-title">環境條件</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>環境溫度 T<sub>o</sub> (°C)</label>
+        <input type="number" id="T_o" value="30" step="1" min="-20" max="60">
+      </div>
+      <div class="input-group">
+        <label>相對濕度 RH (%)</label>
+        <input type="number" id="RH" value="70" step="1" min="20" max="100">
+      </div>
+    </div>
+    <div class="result-item" style="margin-top:8px;">
+      <div class="label">露點溫度</div>
+      <div class="value" id="T_dp_display">- °C</div>
+    </div>
+  </div>
+
+  <!-- ===== 組合總覽 ===== -->
+  <div id="panel-total" class="chamber-panel">
+    <div class="section total-section">
+      <div class="section-title">總容積分配</div>
+      <div class="result-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="result-item" style="background:#e8f4ff;">
+          <div class="label">冷藏室容積</div>
+          <div class="value" id="t_V_R">- L</div>
+        </div>
+        <div class="result-item" style="background:#e8f4ff;">
+          <div class="label">冷凍室容積</div>
+          <div class="value" id="t_V_F">- L</div>
+        </div>
+        <div class="result-item" style="background:#e8f4ff;">
+          <div class="label">總容積</div>
+          <div class="value" id="t_V_total">- L</div>
+        </div>
+      </div>
+      <div class="input-group" style="margin-top:12px;">
+        <label>冷藏室高度比例 (R/H total, %)</label>
+        <input type="number" id="R_height_pct" value="55" step="1" min="30" max="80" onchange="calcAll()">
+      </div>
+      <div class="info-box">
+        等效內容積（台灣能效）：V = V<sub>R</sub> + K × V<sub>F</sub><br>
+        三星級：K=1.78 → <strong id="t_V_eq">- L</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn btn-primary" onclick="calcAll()">計算容積與隔熱</button>
+    <button class="btn btn-secondary" onclick="resetDefaults()">還原預設值</button>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="result-big" style="background:linear-gradient(135deg,#28a745,#28a745);margin-top:12px;">
+      <div style="font-size:0.8em;opacity:0.8;">冰箱容積組合</div>
+      <div class="vol-display" id="final_vol_display">- L</div>
+      <div class="vol-label" id="final_vol_desc">冷藏 / 冷凍 / 總計</div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/calculator.js"></script>
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.chamber-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.chamber-panel').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.chamber-tab:nth-child(${tab === 'R' ? 1 : tab === 'F' ? 2 : 3})`).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function calcAll() {
+  const W = parseFloat(document.getElementById('width_mm').value) || 700;
+  const D = parseFloat(document.getElementById('depth_mm').value) || 650;
+  const H = parseFloat(document.getElementById('height_mm').value) || 1850;
+  const R_pct = parseFloat(document.getElementById('R_height_pct').value) / 100 || 0.55;
+  const T_o = parseFloat(document.getElementById('T_o').value) || 30;
+  const RH = parseFloat(document.getElementById('RH').value) || 70;
+  const T_dp = RefrigCalc.calcDewPoint(T_o, RH);
+
+  document.getElementById('T_dp_display').textContent = T_dp.toFixed(1) + ' °C';
+
+  // 冷藏室參數
+  const R_Ti = parseFloat(document.getElementById('R_Ti').value) || 5;
+  const R_ins_mm = parseFloat(document.getElementById('R_ins_mm').value) || 45;
+  const R_ins_type = document.getElementById('R_ins_type').value;
+  const R_lambda = RefrigCalc.INSULATION_TYPES[R_ins_type]?.lambda || 0.021;
+  const R_open_times = parseFloat(document.getElementById('R_open_times').value) || 20;
+  const R_open_min = parseFloat(document.getElementById('R_open_min').value) || 0.5;
+  const R_light_W = parseFloat(document.getElementById('R_light_W').value) || 5;
+  const R_fan_W = parseFloat(document.getElementById('R_fan_W').value) || 5;
+  const R_defrost_W = parseFloat(document.getElementById('R_defrost_W').value) || 150;
+  const R_defrost_times = parseFloat(document.getElementById('R_defrost_times').value) || 2;
+  const R_defrost_min = parseFloat(document.getElementById('R_defrost_min').value) || 20;
+  const R_door_ratio = parseFloat(document.getElementById('R_door_ratio').value) || 0.7;
+
+  // 冷凍室參數
+  const F_Ti = parseFloat(document.getElementById('F_Ti').value) || -18;
+  const F_ins_mm = parseFloat(document.getElementById('F_ins_mm').value) || 60;
+  const F_ins_type = document.getElementById('F_ins_type').value;
+  const F_lambda = RefrigCalc.INSULATION_TYPES[F_ins_type]?.lambda || 0.021;
+  const F_open_times = parseFloat(document.getElementById('F_open_times').value) || 5;
+  const F_open_min = parseFloat(document.getElementById('F_open_min').value) || 0.3;
+  const F_light_W = parseFloat(document.getElementById('F_light_W').value) || 0;
+  const F_fan_W = parseFloat(document.getElementById('F_fan_W').value) || 2;
+  const F_door_ratio = parseFloat(document.getElementById('F_door_ratio').value) || 0.7;
+
+  // 內部高度分配：冷藏室 = 用戶指定的%高度，機構空間 12%（固定），其餘為冷凍室
+  const H_mech = H * 0.12;
+  const H_R = H * R_pct;    // 冷藏室高度 = 設定百分比
+  const H_F = H - H_R - H_mech;  // 冷凍室 = 扣掉冷藏室+機構後的空間
+
+  // 各艙室外部尺寸（與總尺寸相同，只差在高度）
+  const dims_R = { w: W, d: D, h: Math.max(50, H_R) };
+  const dims_F = { w: W, d: D, h: Math.max(50, H_F) };
+
+  // 容積計算（使用 calcVolumeV2 邏輯）
+  const V_R = Math.max(10, W - 2*R_ins_mm) * Math.max(10, D - 2*R_ins_mm) * Math.max(10, H_R - 2*R_ins_mm) / 1e6;
+  const V_F = Math.max(10, W - 2*F_ins_mm) * Math.max(10, D - 2*F_ins_mm) * Math.max(10, H_F - 2*F_ins_mm) / 1e6;
+  const V_total = V_R + V_F;
+
+  // 冷藏室結果
+  const R_wall = RefrigCalc.calcCompartmentWallLoad(dims_R, R_ins_mm, R_lambda, R_Ti, T_o, R_door_ratio);
+  const R_min_ins = RefrigCalc.calcMinInsulation(T_o, R_Ti, T_dp);
+  document.getElementById('R_vol_display').textContent = V_R.toFixed(0) + ' L';
+  document.getElementById('R_inner_dims').textContent = `${Math.round(dims_R.w - 2*R_ins_mm)} × ${Math.round(dims_R.d - 2*R_ins_mm)} × ${Math.round(dims_R.h - 2*R_ins_mm)} mm`;
+  document.getElementById('R_A_total').textContent = R_wall.A_total_m2 + ' m²';
+  document.getElementById('R_U_wall').textContent = R_wall.U_wall + ' W/(m²·K)';
+  document.getElementById('R_min_ins').textContent = R_min_ins.toFixed(1) + ' mm';
+
+  // 冷凍室結果
+  const F_wall = RefrigCalc.calcCompartmentWallLoad(dims_F, F_ins_mm, F_lambda, F_Ti, T_o, F_door_ratio);
+  const F_min_ins = RefrigCalc.calcMinInsulation(T_o, F_Ti, T_dp);
+  document.getElementById('F_vol_display').textContent = V_F.toFixed(0) + ' L';
+  document.getElementById('F_inner_dims').textContent = `${Math.round(dims_F.w - 2*F_ins_mm)} × ${Math.round(dims_F.d - 2*F_ins_mm)} × ${Math.round(dims_F.h - 2*F_ins_mm)} mm`;
+  document.getElementById('F_A_total').textContent = F_wall.A_total_m2 + ' m²';
+  document.getElementById('F_U_wall').textContent = F_wall.U_wall + ' W/(m²·K)';
+  document.getElementById('F_min_ins').textContent = F_min_ins.toFixed(1) + ' mm';
+
+  // 總覽
+  document.getElementById('t_V_R').textContent = V_R.toFixed(0) + ' L';
+  document.getElementById('t_V_F').textContent = V_F.toFixed(0) + ' L';
+  document.getElementById('t_V_total').textContent = V_total.toFixed(0) + ' L';
+  document.getElementById('t_V_eq').textContent = (V_R + 1.78 * V_F).toFixed(0) + ' L';
+
+  // 最終結果
+  document.getElementById('final_vol_display').textContent = V_total.toFixed(0) + ' L';
+  document.getElementById('final_vol_desc').textContent = `${V_R.toFixed(0)} L / ${V_F.toFixed(0)} L / 總計`;
+  document.getElementById('results').style.display = 'block';
+
+  // 儲存到 localStorage
+  const saved = {
+    width_mm: W, depth_mm: D, height_mm: H,
+    T_o, RH, T_dp,
+    R_pct,
+    R: { Ti: R_Ti, ins_mm: R_ins_mm, ins_type: R_ins_type, open_times: R_open_times, open_min: R_open_min,
+         light_W: R_light_W, fan_W: R_fan_W, defrost_W: R_defrost_W, defrost_times: R_defrost_times, defrost_min: R_defrost_min, door_ratio: R_door_ratio },
+    F: { Ti: F_Ti, ins_mm: F_ins_mm, ins_type: F_ins_type, open_times: F_open_times, open_min: F_open_min,
+         light_W: F_light_W, fan_W: F_fan_W, door_ratio: F_door_ratio },
+    vol: { V_R: V_R.toFixed(1), V_F: V_F.toFixed(1), V_total: V_total.toFixed(1), H_R: H_R.toFixed(0), H_F: H_F.toFixed(0) },
+    wall_R: { Q_W: R_wall.Q_W, U_wall: R_wall.U_wall },
+    wall_F: { Q_W: F_wall.Q_W, U_wall: F_wall.U_wall },
+  };
+  localStorage.setItem('refrig_calc', JSON.stringify(saved));
+}
+
+function resetDefaults() {
+  const defaults = [
+    ['width_mm','700'],['depth_mm','650'],['height_mm','1850'],
+    ['T_o','30'],['RH','70'],
+    ['R_Ti','5'],['R_ins_mm','45'],['R_ins_type','PU foam (cyclopentane)'],
+    ['R_open_times','20'],['R_open_min','0.5'],
+    ['R_light_W','5'],['R_fan_W','5'],['R_defrost_W','150'],
+    ['R_defrost_times','2'],['R_defrost_min','20'],['R_door_ratio','0.7'],
+    ['F_Ti','-18'],['F_ins_mm','60'],['F_ins_type','PU foam (cyclopentane)'],
+    ['F_open_times','5'],['F_open_min','0.3'],
+    ['F_light_W','0'],['F_fan_W','2'],['F_door_ratio','0.7'],
+    ['R_height_pct','62'],
+  ];
+  defaults.forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  calcAll();
+}
+
+window.addEventListener('load', () => {
+  const saved = JSON.parse(localStorage.getItem('refrig_calc') || '{}');
+  if (saved.width_mm) {
+    ['width_mm','depth_mm','height_mm','T_o','RH','R_Ti','R_ins_mm',
+     'R_open_times','R_open_min','R_light_W','R_fan_W','R_defrost_W',
+     'R_defrost_times','R_defrost_min','R_door_ratio',
+     'F_Ti','F_ins_mm','F_open_times','F_open_min',
+     'F_light_W','F_fan_W','F_door_ratio','R_height_pct'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && saved[id] !== undefined) el.value = saved[id];
+    });
+    if (saved.R?.ins_type) document.getElementById('R_ins_type').value = saved.R.ins_type;
+    if (saved.F?.ins_type) document.getElementById('F_ins_type').value = saved.F.ins_type;
+    calcAll();
+  } else {
+    calcAll();
+  }
+});
+</script>
+</body>
+</html>

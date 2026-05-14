@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>計算報告 - 冰箱制冷能力計算系統</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    @media print { nav, .action-row, button, .no-print { display: none !important; } body { background: #fff; } .page { padding: 10px; max-width: 100%; } }
+    .report-header { background: linear-gradient(135deg,#1a3c6e,#2a5298);color:#fff;padding:20px;border-radius:8px;margin-bottom:16px;text-align:center; }
+    .report-header h1 { font-size:1.5em;margin:0 0 4px 0; }
+    .report-header .subtitle { opacity:0.8;font-size:0.85em; }
+    .report-section { background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+    .report-section h3 { color:#1a3c6e;font-size:0.95em;margin:0 0 10px 0;border-bottom:2px solid #1a3c6e;padding-bottom:6px; }
+    .data-table { width:100%;border-collapse:collapse;font-size:0.88em; }
+    .data-table tr:nth-child(even) { background:#f5f7ff; }
+    .data-table td { padding:5px 8px; }
+    .data-table td:last-child { text-align:right;font-weight:700; }
+    .tag { display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75em;font-weight:700; }
+    .tag-ok { background:#e8f5e9;color:#2e7d32; }
+    .tag-fail { background:#ffebee;color:#c62828; }
+    .two-col { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="report-header">
+    <h1>冰箱制冷能力計算報告</h1>
+    <div class="subtitle">冰箱制冷能力計算系統 v2.0（雙艙室版） | 產生時間：<span id="gen_time">-</span></div>
+  </div>
+
+  <!-- Step 1: 尺寸與容積 -->
+  <div class="report-section">
+    <h3>1. 冰箱尺寸與容積</h3>
+    <table class="data-table">
+      <tr><td>外部尺寸（寬×深×高）</td><td id="r_dims">- mm</td></tr>
+      <tr><td>冷藏室容積 V<sub>R</sub></td><td id="r_V_R">- L</td></tr>
+      <tr><td>冷凍室容積 V<sub>F</sub></td><td id="r_V_F">- L</td></tr>
+      <tr><td>總容積</td><td id="r_V_total">- L</td></tr>
+      <tr><td>等效內容積（K=1.78）</td><td id="r_V_eq">- L</td></tr>
+      <tr><td>冷藏室隔熱厚度 / 類型</td><td id="r_R_ins">- mm / -</td></tr>
+      <tr><td>冷凍室隔熱厚度 / 類型</td><td id="r_F_ins">- mm / -</td></tr>
+      <tr><td>冷藏室 U值</td><td id="r_R_U">- W/(m²·K)</td></tr>
+      <tr><td>冷凍室 U值</td><td id="r_F_U">- W/(m²·K)</td></tr>
+    </table>
+  </div>
+
+  <!-- Step 2: 熱負荷 -->
+  <div class="report-section">
+    <h3>2. 熱負荷計算</h3>
+    <div class="two-col">
+      <div>
+        <b>冷藏室 (R)</b>
+        <table class="data-table">
+          <tr><td>箱壁傳導</td><td id="r_R_wall">- W</td></tr>
+          <tr><td>開門侵入</td><td id="r_R_door">- W</td></tr>
+          <tr><td>內部熱源</td><td id="r_R_internal">- W</td></tr>
+          <tr><td>食品熱負荷</td><td id="r_R_product">- W</td></tr>
+          <tr><td>冷藏室總計</td><td id="r_R_total">- W</td></tr>
+        </table>
+      </div>
+      <div>
+        <b>冷凍室 (F)</b>
+        <table class="data-table">
+          <tr><td>箱壁傳導</td><td id="r_F_wall">- W</td></tr>
+          <tr><td>開門侵入</td><td id="r_F_door">- W</td></tr>
+          <tr><td>內部熱源</td><td id="r_F_internal">- W</td></tr>
+          <tr><td>食品熱負荷</td><td id="r_F_product">- W</td></tr>
+          <tr><td>冷凍室總計</td><td id="r_F_total">- W</td></tr>
+        </table>
+      </div>
+    </div>
+    <table class="data-table" style="margin-top:10px;">
+      <tr><td>系統總制冷負荷</td><td id="r_Q_total" style="font-size:1.1em;">- W</td></tr>
+    </table>
+  </div>
+
+  <!-- Step 3: 壓縮機 -->
+  <div class="report-section">
+    <h3>3. 壓縮機選型</h3>
+    <table class="data-table">
+      <tr><td>冷凝 / 蒸發溫度</td><td id="r_Temps">- °C / - °C</td></tr>
+      <tr><td>冷媒</td><td id="r_refrig">-</td></tr>
+      <tr><td>建議功率</td><td id="r_HP">- HP</td></tr>
+      <tr><td>輸入功率</td><td id="r_P_in">- W</td></tr>
+      <tr><td>COP（實際）</td><td id="r_COP">-</td></tr>
+      <tr><td>估計年耗電</td><td id="r_AE">- kWh/年</td></tr>
+    </table>
+  </div>
+
+  <!-- Step 4: 能耗 -->
+  <div class="report-section">
+    <h3>4. 能耗評估</h3>
+    <table class="data-table">
+      <tr><td>年耗電量</td><td id="r_AE_final">- kWh/年</td></tr>
+      <tr><td>EU ErP 等級</td><td id="r_Erp">-</td></tr>
+      <tr><td>台灣 MEPS</td><td id="r_MEPS">-</td></tr>
+      <tr><td>每升耗電</td><td id="r_per_L">- kWh/L/年</td></tr>
+    </table>
+  </div>
+
+  <div class="action-row no-print">
+    <button class="btn btn-primary" onclick="exportJSON()">匯出 JSON</button>
+    <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">匯入 JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    <button class="btn btn-secondary" onclick="window.print()">列印報告</button>
+    <button class="btn btn-secondary" onclick="parent.goTo('cabinet')">重新計算</button>
+  </div>
+</div>
+
+<script src="../js/calculator.js"></script>
+<script>
+document.getElementById('gen_time').textContent = new Date().toLocaleString('zh-TW');
+
+function getSavedData() { return JSON.parse(localStorage.getItem('refrig_calc') || '{}'); }
+
+function generateReport() {
+  const s = getSavedData();
+
+  // Step 1
+  const V_R = parseFloat(s.vol?.V_R) || 0;
+  const V_F = parseFloat(s.vol?.V_F) || 0;
+  document.getElementById('r_dims').textContent =
+    `${s.width_mm} × ${s.depth_mm} × ${s.height_mm} mm`;
+  document.getElementById('r_V_R').textContent = V_R + ' L';
+  document.getElementById('r_V_F').textContent = V_F + ' L';
+  document.getElementById('r_V_total').textContent = (V_R + V_F).toFixed(0) + ' L';
+  document.getElementById('r_V_eq').textContent = (V_R + 1.78 * V_F).toFixed(0) + ' L';
+  document.getElementById('r_R_ins').textContent =
+    `${s.R?.ins_mm} mm / ${s.R?.ins_type || '-'}`;
+  document.getElementById('r_F_ins').textContent =
+    `${s.F?.ins_mm} mm / ${s.F?.ins_type || '-'}`;
+  document.getElementById('r_R_U').textContent = (s.wall_R?.U_wall || '-') + ' W/(m²·K)';
+  document.getElementById('r_F_U').textContent = (s.wall_F?.U_wall || '-') + ' W/(m²·K)';
+
+  // Step 2 - detailed breakdown
+  const r_R = s.Q_R_detail || {};
+  const r_F = s.Q_F_detail || {};
+  document.getElementById('r_R_wall').textContent = (r_R.wall || '-') + ' W';
+  document.getElementById('r_R_door').textContent = (r_R.door || '-') + ' W';
+  document.getElementById('r_R_internal').textContent = (r_R.internal || '-') + ' W';
+  document.getElementById('r_R_product').textContent = (r_R.product || '-') + ' W';
+  document.getElementById('r_R_total').textContent = (s.Q?.Q_R || '-') + ' W';
+  document.getElementById('r_F_wall').textContent = (r_F.wall || '-') + ' W';
+  document.getElementById('r_F_door').textContent = (r_F.door || '-') + ' W';
+  document.getElementById('r_F_internal').textContent = (r_F.internal || '-') + ' W';
+  document.getElementById('r_F_product').textContent = (r_F.product || '-') + ' W';
+  document.getElementById('r_F_total').textContent = (s.Q?.Q_F || '-') + ' W';
+  document.getElementById('r_Q_total').textContent = (s.Q?.Q_total || '-') + ' W';
+
+  // Step 3
+  if (s.compressor) {
+    document.getElementById('r_Temps').textContent =
+      `${s.compressor.T_cond_C}°C / ${s.compressor.T_evap_C}°C`;
+    document.getElementById('r_refrig').textContent =
+      `${s.compressor.refrigerant}（GWP=${s.compressor.refGWP}）`;
+    document.getElementById('r_HP').textContent = s.compressor.P_HP + ' HP';
+    document.getElementById('r_P_in').textContent = s.compressor.P_input_W + ' W';
+    document.getElementById('r_COP').textContent = s.compressor.COP_actual;
+  }
+
+  // Step 4
+  if (s.energy) {
+    document.getElementById('r_AE_final').textContent = s.energy.AE_kWh_year + ' kWh/年';
+    document.getElementById('r_Erp').textContent = `EEI ${s.energy.EEI}`;
+    document.getElementById('r_per_L').textContent = s.energy.per_L + ' kWh/L/年';
+  }
+}
+
+function exportJSON() {
+  const s = getSavedData();
+  s._exportTime = new Date().toISOString();
+  s._version = '2.0';
+  const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fridge_calc_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.width_mm) throw new Error('Invalid format');
+      localStorage.setItem('refrig_calc', JSON.stringify(data));
+      alert('匯入成功！');
+      generateReport();
+    } catch(err) {
+      alert('匯入失敗：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+window.addEventListener('load', generateReport);
+</script>
+</body>
+</html>

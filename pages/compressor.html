@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 3 壓縮機選型 - 冰箱制冷能力計算系統</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .comp-result { background: #fff; border-radius: 8px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .comp-result h3 { color: #1a3c6e; font-size: 0.95em; margin: 0 0 8px 0; }
+    .result-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .key { color: #555; font-size: 0.88em; }
+    .result-row .val { font-weight: 700; color: #1a3c6e; }
+    .big-number { font-size: 2em; font-weight: 800; text-align: center; color: #1a3c6e; }
+    .big-number small { font-size: 0.4em; color: #666; }
+    .cop-bar { height: 8px; background: #eee; border-radius: 4px; margin: 4px 0; overflow: hidden; }
+    .cop-bar-fill { height: 100%; background: linear-gradient(90deg,#ff4444,#ffaa00,#44cc44); border-radius: 4px; transition: width 0.5s; }
+    .ref-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 700; }
+    .ref-r600a { background: #e8f5e9; color: #2e7d32; }
+    .ref-r290 { background: #e3f2fd; color: #1565c0; }
+    .ref-r134a { background: #fff3e0; color: #e65100; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Step 3：壓縮機選型</h1>
+
+  <div class="section">
+    <div class="section-title">冷凝與蒸發條件</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>冷凝溫度 T<sub>cond</sub> (°C)</label>
+        <input type="number" id="T_cond" value="45" step="1" min="30" max="70">
+      </div>
+      <div class="input-group">
+        <label>蒸發溫度 T<sub>evap</sub> (°C)</label>
+        <input type="number" id="T_evap" value="-10" step="1" min="-35" max="5">
+      </div>
+      <div class="input-group">
+        <label>冷媒種類</label>
+        <select id="refrigerant">
+          <option value="R-600a" selected>R-600a（異丁烷，GWP=3）</option>
+          <option value="R-290">R-290（丙烷，GWP=3）</option>
+          <option value="R-134a">R-134a（GWP=1430）</option>
+          <option value="R-410A">R-410A（GWP=2088）</option>
+        </select>
+      </div>
+    </div>
+    <div class="info-box">
+      <b>說明：</b>冰箱只有一個壓縮機+冷凝器，服務整體系統。<br>
+      R-600a 是目前小型家用冰箱最主流的冷媒（安全性高、效率好）。<br>
+      冷藏室蒸發溫度約 -5~-15°C，冷凍室約 -20~-30°C。取加權平均或主要艙室設定。
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">壓縮機規格估算</div>
+    <div class="comp-result">
+      <div class="big-number" id="disp_HP">- HP<span style="font-size:0.3em"> / <span id="disp_kW">- kW</span></span></div>
+      <div style="text-align:center;font-size:0.85em;color:#666;margin-top:4px;">建議壓縮機功率</div>
+    </div>
+
+    <div class="comp-result">
+      <h3>COP 分析</h3>
+      <div class="result-row"><span class="key">卡諾 COP（理論上限）</span><span class="val" id="disp_COP_carnot">-</span></div>
+      <div class="result-row"><span class="key">實際 COP</span><span class="val" id="disp_COP_actual">-</span></div>
+      <div style="margin-top:6px;">
+        <div class="result-row"><span class="key">COP 等效（0.7~2.0）</span>
+          <span class="val">
+            <span class="cop-bar" style="width:120px;display:inline-block;vertical-align:middle;">
+              <span class="cop-bar-fill" id="cop_bar_fill" style="width:0%"></span>
+            </span>
+            <span id="disp_COP_pct">-</span>
+          </span>
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:8px;">
+        實際 COP 模型（已根據 R-600a 實測數據修正）：<br>
+        COP ≈ 2.5 − 0.018×ΔT − 0.03×(T_evap+20)<br>
+        其中 ΔT = T_cond − T_evap
+      </div>
+    </div>
+
+    <div class="comp-result">
+      <h3>輸入功率與能耗</h3>
+      <div class="result-row"><span class="key">系統總制冷負荷</span><span class="val" id="disp_Q_total">- W</span></div>
+      <div class="result-row"><span class="key">壓縮機輸入功率</span><span class="val" id="disp_P_in">- W</span></div>
+      <div class="result-row"><span class="key">運轉係數（Runtime Factor）</span><span class="val" id="disp_runtime">-</span></div>
+      <div class="result-row"><span class="key">估計年耗電</span><span class="val" id="disp_AE">- kWh/年</span></div>
+    </div>
+
+    <div class="comp-result">
+      <h3>冷媒資訊</h3>
+      <div class="result-row"><span class="key">冷媒種類</span><span class="val" id="disp_ref">-</span></div>
+      <div class="result-row"><span class="key">GWP（全球暖化潛能）</span><span class="val" id="disp_GWP">-</span></div>
+      <div class="result-row"><span class="key">ODP（臭氧消耗潛能）</span><span class="val" id="disp_ODP">0</span></div>
+      <div class="result-row"><span class="key">壓縮機類型</span><span class="val" id="disp_comp_type">-</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">壓縮機功率等級參考</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+      <tr style="background:#1a3c6e;color:white;">
+        <th style="padding:6px 8px;text-align:left;">功率</th>
+        <th style="padding:6px 8px;text-align:right;">W</th>
+        <th style="padding:6px 8px;text-align:left;">適用場合</th>
+      </tr>
+      <tr style="background:#f5f5f5;"><td style="padding:5px 8px;">1/8 HP</td><td style="padding:5px 8px;text-align:right;">93 W</td><td style="padding:5px 8px;">小型冰箱（&lt;150L）</td></tr>
+      <tr><td style="padding:5px 8px;">1/6 HP</td><td style="padding:5px 8px;text-align:right;">125 W</td><td style="padding:5px 8px;">中型冰箱（150~250L）</td></tr>
+      <tr style="background:#f5f5f5;"><td style="padding:5px 8px;">1/4 HP</td><td style="padding:5px 8px;text-align:right;">187 W</td><td style="padding:5px 8px;">中大型冰箱（250~400L）</td></tr>
+      <tr><td style="padding:5px 8px;">1/3 HP</td><td style="padding:5px 8px;text-align:right;">246 W</td><td style="padding:5px 8px;">大型冰箱（400~600L）</td></tr>
+      <tr style="background:#f5f5f5;"><td style="padding:5px 8px;">1/2 HP</td><td style="padding:5px 8px;text-align:right;">373 W</td><td style="padding:5px 8px;">超大冰箱（&gt;600L）</td></tr>
+    </table>
+  </div>
+
+  <div class="action-row">
+    <button class="btn btn-primary" onclick="calcCompressor()">計算壓縮機規格</button>
+    <button class="btn btn-secondary" onclick="parent.goTo('cooling_load')">返回熱負荷</button>
+  </div>
+</div>
+
+<script src="../js/calculator.js"></script>
+<script>
+function getSavedData() { return JSON.parse(localStorage.getItem('refrig_calc') || '{}'); }
+
+function calcCompressor() {
+  const s = getSavedData();
+  if (!s.Q) { alert('請先完成 Step 1 和 Step 2'); return; }
+
+  const T_cond = parseFloat(document.getElementById('T_cond').value) || 45;
+  const T_evap = parseFloat(document.getElementById('T_evap').value) || -10;
+  const ref = document.getElementById('refrigerant').value;
+  const Q_total = parseFloat(s.Q.Q_total);
+
+  const result = RefrigCalc.calcCompressorSpecV2(Q_total, T_evap, T_cond, ref);
+
+  // COP 卡諾
+  const T_evap_K = T_evap + 273.15;
+  const T_cond_K = T_cond + 273.15;
+  const COP_carnot = T_evap_K / (T_cond_K - T_evap_K);
+
+  // COP 顯示
+  const copFill = ((result.COP_actual - 0.7) / (2.0 - 0.7)) * 100;
+  document.getElementById('cop_bar_fill').style.width = Math.min(100, Math.max(0, copFill)) + '%';
+  document.getElementById('disp_COP_pct').textContent = result.COP_actual.toFixed(2) + ' / 2.0';
+  document.getElementById('disp_COP_carnot').textContent = COP_carnot.toFixed(2);
+  document.getElementById('disp_COP_actual').textContent = result.COP_actual.toFixed(2);
+
+  // 功率顯示
+  document.getElementById('disp_HP').innerHTML = result.P_HP + ' HP<small> / ' + result.P_kW + ' kW</small>';
+  document.getElementById('disp_kW').textContent = result.P_kW + ' kW';
+  document.getElementById('disp_Q_total').textContent = Q_total.toFixed(1) + ' W';
+  document.getElementById('disp_P_in').textContent = result.P_input_W + ' W';
+
+  // 年耗電
+  const runtime = s.F?.Ti && s.F.Ti < 0 ? 0.55 : 0.40;
+  const AE = (parseFloat(result.P_input_W) / 1000) * 24 * 365 * runtime;
+  document.getElementById('disp_runtime').textContent = runtime;
+  document.getElementById('disp_AE').textContent = Math.round(AE) + ' kWh/年';
+
+  // 冷媒顯示
+  const refData = RefrigCalc.REFRIGERANTS[ref];
+  document.getElementById('disp_ref').innerHTML = `<span class="ref-badge ref-${ref.toLowerCase().replace('-','')}">${ref}</span> ${refData?.name || ''}`;
+  document.getElementById('disp_GWP').textContent = refData?.GWP || '-';
+  document.getElementById('disp_ODP').textContent = refData?.ODP || 0;
+  document.getElementById('disp_comp_type').textContent = result.compressorDesc;
+
+  // 儲存
+  s.compressor = { T_cond, T_evap, refrigerant: ref, ...result };
+  localStorage.setItem('refrig_calc', JSON.stringify(s));
+}
+
+window.addEventListener('load', calcCompressor);
+</script>
+</body>
+</html>

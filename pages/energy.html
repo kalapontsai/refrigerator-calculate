@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 4 能耗評估 - 冰箱制冷能力計算系統</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .energy-big { text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; margin-bottom: 16px; }
+    .energy-big .number { font-size: 2.8em; font-weight: 800; }
+    .energy-big .label { font-size: 1em; opacity: 0.9; margin-top: 4px; }
+    .grade-bar { display: flex; gap: 4px; margin: 10px 0; }
+    .grade { flex: 1; text-align: center; padding: 6px 2px; border-radius: 4px; font-size: 0.7em; font-weight: 700; color: white; }
+    .grade-a { background: #4caf50; } .grade-b { background: #8bc34a; } .grade-c { background: #cddc39; color:#333; }
+    .grade-d { background: #ffeb3b; color:#333; } .grade-e { background: #ffc107; color:#333; }
+    .grade-f { background: #ff9800; } .grade-g { background: #f44336; }
+    .grade.active { box-shadow: 0 0 0 3px #1a3c6e; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+    .result-table tr:nth-child(even) { background: #f9f9f9; }
+    .result-table td { padding: 6px 10px; }
+    .result-table td:last-child { text-align: right; font-weight: 700; }
+    .pass-ok { color: #2e7d32; font-weight: 800; }
+    .pass-fail { color: #c62828; font-weight: 800; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Step 4：能耗評估</h1>
+
+  <div class="section">
+    <div class="section-title">年耗電量估算</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>輸入功率 (W)</label>
+        <input type="number" id="P_input_W" value="0" step="1" min="10" max="1000">
+      </div>
+      <div class="input-group">
+        <label>運行係數 (RF)</label>
+        <input type="number" id="runtime_factor" value="0.40" step="0.05" min="0.1" max="0.9">
+      </div>
+    </div>
+    <div class="info-box">
+      年耗電 = (P<sub>in</sub> / 1000) × 24h × 365天 × RF<br>
+      RF：冷藏室約 0.30~0.45，風扇式變頻冰箱偏低
+    </div>
+  </div>
+
+  <div class="energy-big">
+    <div class="number" id="disp_AE">- kWh/年</div>
+    <div class="label">年耗電量估算</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">EU ErP 能耗等級（2021後）</div>
+    <div class="grade-bar" id="erp_grade_bar">
+      <div class="grade grade-a">A<br>&lt;30</div>
+      <div class="grade grade-b">B<br>30-42</div>
+      <div class="grade grade-c">C<br>42-55</div>
+      <div class="grade grade-d">D<br>55-80</div>
+      <div class="grade grade-e">E<br>80-95</div>
+      <div class="grade grade-f">F<br>95-110</div>
+      <div class="grade grade-g">G<br>&gt;110</div>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-weight:700;font-size:1.1em;" id="erp_result">-</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">台灣 2027 年能效標準（等效容積法）</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>冷藏室容積 V<sub>R</sub> (L)</label>
+        <input type="number" id="tw_V_R" value="200" step="1" min="10">
+      </div>
+      <div class="input-group">
+        <label>冷凍室容積 V<sub>F</sub> (L)</label>
+        <input type="number" id="tw_V_F" value="60" step="1" min="5">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>星級（冷凍室）</label>
+        <select id="tw_star">
+          <option value="2">二星級（K=1.56）</option>
+          <option value="2.5">超二星級（K=1.67）</option>
+          <option value="3" selected>三星級（K=1.78）</option>
+          <option value="4">四星級（K=1.78）</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>冷卻方式</label>
+        <select id="tw_cool_type">
+          <option value="fan" selected>風扇式</option>
+          <option value="static">直冷式</option>
+        </select>
+      </div>
+    </div>
+    <div class="info-box">
+      等效容積計算：V<sub>eq</sub> = V<sub>R</sub> + K × V<sub>F</sub><br>
+      例如：冷藏187L + 三星級冷凍63L → 187 + 1.78×63 = <strong id="tw_V_eq_disp">299.1 L</strong>
+    </div>
+    <table class="result-table" style="margin-top:10px;">
+      <tr><td>等效內容積 V<sub>eq</sub></td><td id="r_tw_V_eq">- L</td></tr>
+      <tr><td>年耗電（估算）</td><td id="r_tw_AE">- kWh/年</td></tr>
+      <tr><td>每月耗電</td><td id="r_tw_monthly">- kWh/月</td></tr>
+      <tr><td>E.F.（能源因數值）</td><td id="r_tw_EF_actual">- L/kWh/月</td></tr>
+      <tr><td>MEPS 基準 E.F.</td><td id="r_tw_EF_base">- L/kWh/月</td></tr>
+      <tr><td>與 MEPS 比率</td><td id="r_tw_ratio">- %</td></tr>
+      <tr><td>台灣能效合格</td><td id="r_tw_pass">-</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">VIP / 變頻 效益分析</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>目前 U 值（W/(m²·K)）</label>
+        <input type="number" id="vip_U" value="0.35" step="0.01" min="0.01">
+      </div>
+      <div class="input-group">
+        <label>目前隔熱厚度 (mm)</label>
+        <input type="number" id="vip_ins" value="50" step="1">
+      </div>
+    </div>
+    <div id="vip_result" style="display:none;">
+      <table class="result-table">
+        <tr><td>VIP 節省厚度</td><td id="r_vip_save">- mm</td></tr>
+        <tr><td>VIP 節省比例</td><td id="r_vip_pct">- %</td></tr>
+        <tr><td>VIP 所需厚度</td><td id="r_vip_needed">- mm</td></tr>
+      </table>
+    </div>
+    <div class="input-row" style="margin-top:8px;">
+      <div class="input-group">
+        <label>變頻 vs 定頻 COP 提升 (%)</label>
+        <input type="number" id="inv_pct" value="30" step="5" min="0" max="100">
+      </div>
+      <div class="input-group">
+        <label>電價 (元/kWh)</label>
+        <input type="number" id="elec_price" value="4" step="0.1" min="1">
+      </div>
+    </div>
+    <div id="inv_result" style="display:none;margin-top:8px;">
+      <table class="result-table">
+        <tr><td>變頻節省電費/年</td><td id="r_inv_save">- 元/年</td></tr>
+        <tr><td>每升耗電</td><td id="r_per_L">- kWh/L/年</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="action-row">
+
+  <!-- 自檢模式 v2 - SR-C48DV 完整驗證 -->
+  <div class="section" style="border-top:3px solid #e53935;margin-top:16px;">
+    <div class="section-title" style="color:#e53935;">自檢模式 - SR-C48DV 案例驗證</div>
+    <div class="info-box" style="background:#fff3f3;border-color:#e53935;">
+      聲寶 SR-C48DV：V<sub>R</sub>=350L, V<sub>F</sub>=125L（四星）, Panasonic TKF100E23 變頻壓縮機<br>
+      點選「執行完整自檢」將自動填入所有參數並比對基準解答。
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>V<sub>R</sub> 冷藏室容積 (L)</label>
+        <input type="number" id="sc_V_R" value="350" step="1" min="50">
+      </div>
+      <div class="input-group">
+        <label>V<sub>F</sub> 冷凍室容積 (L)</label>
+        <input type="number" id="sc_V_F" value="125" step="1" min="10">
+      </div>
+      <div class="input-group">
+        <label>星級</label>
+        <select id="sc_star">
+          <option value="3" selected>三星/四星（K=1.78）</option>
+          <option value="2.5">超二星（K=1.67）</option>
+          <option value="2">二星（K=1.56）</option>
+        </select>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>T<sub>o</sub> 環境溫度 (°C)</label>
+        <input type="number" id="sc_T_o" value="30" step="1">
+      </div>
+      <div class="input-group">
+        <label>RH 相對濕度 (%)</label>
+        <input type="number" id="sc_RH" value="85" step="1">
+      </div>
+      <div class="input-group">
+        <label>T<sub>i</sub> 艙內溫度 (°C)</label>
+        <input type="number" id="sc_T_i" value="-18" step="1">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Q 熱交換量 (kcal/h)</label>
+        <input type="number" id="sc_Q" value="16.8" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>S 表面積 (m²)</label>
+        <input type="number" id="sc_S" value="1.0" step="0.1">
+      </div>
+      <div class="input-group">
+        <label>&alpha;<sub>i</sub> (kcal/h·m²·°C)</label>
+        <input type="number" id="sc_alpha" value="10" step="0.1">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>&lambda; 導熱係數 (kcal/h·m·°C)</label>
+        <input type="number" id="sc_lambda" value="0.017" step="0.001">
+      </div>
+      <div class="input-group">
+        <label>Q<sub>L</sub> 總熱負荷 (kcal/h)</label>
+        <input type="number" id="sc_QL" value="53.34" step="0.01">
+      </div>
+      <div class="input-group">
+        <label>PR 運轉比</label>
+        <input type="number" id="sc_PR" value="0.50" step="0.01">
+      </div>
+    </div>
+    <div id="sc_results" style="display:none;margin-top:10px;">
+      <table class="result-table" style="border-top:2px solid #e53935;padding-top:8px;">
+        <tr style="background:#f5f5f5;font-weight:700;"><td colspan=3 style="padding:8px;">自檢結果</td></tr>
+        <tr><td>等效內容積 V<sub>eq</sub></td><td id="sc_r_Veq">-</td><td id="sc_m_Veq" style="font-weight:700;">-</td></tr>
+        <tr><td>MEPS 基準 E.F.</td><td id="sc_r_EFbase">-</td><td id="sc_m_EFbase" style="font-weight:700;">-</td></tr>
+        <tr><td>露點溫度 T<sub>dp</sub></td><td id="sc_r_Tdp">-</td><td>-</td></tr>
+        <tr><td>K 值（總傳熱係數）</td><td id="sc_r_K">-</td><td id="sc_m_K" style="font-weight:700;">-</td></tr>
+        <tr><td>最小保溫厚度</td><td id="sc_r_d">-</td><td id="sc_m_d" style="font-weight:700;">-</td></tr>
+        <tr><td>IEC 測試負載</td><td id="sc_r_TL">-</td><td id="sc_m_TL" style="font-weight:700;">-</td></tr>
+        <tr><td>蒸發器需求能力 Q<sub>E</sub></td><td id="sc_r_QE">-</td><td id="sc_m_QE" style="font-weight:700;">-</td></tr>
+      </table>
+      <div id="sc_summary" style="margin-top:8px;font-weight:700;font-size:1.1em;"></div>
+    </div>
+    <div class="action-row" style="margin-top:10px;">
+      <button class="btn" style="background:#e53935;color:white;" onclick="runSelfCheck()">執行自檢</button>
+      <button class="btn" style="background:#1565c0;color:white;margin-left:6px;" onclick="runSRC48DV()">執行完整自檢（SR-C48DV）</button>
+    </div>
+  </div>
+
+    <button class="btn btn-primary" onclick="calcEnergy()">計算能耗</button>
+    <button class="btn btn-secondary" onclick="parent.goTo('compressor')">返回壓縮機選型</button>
+  </div>
+</div>
+
+<script src="../js/calculator.js"></script>
+<script>
+// ErP 等級（高亮）
+function updateErPGrade(ei) {
+  document.querySelectorAll('.grade-bar .grade').forEach(el => el.classList.remove('active'));
+  if (ei < 30) document.querySelector('.grade-a').classList.add('active');
+  else if (ei < 42) document.querySelector('.grade-b').classList.add('active');
+  else if (ei < 55) document.querySelector('.grade-c').classList.add('active');
+  else if (ei < 80) document.querySelector('.grade-d').classList.add('active');
+  else if (ei < 95) document.querySelector('.grade-e').classList.add('active');
+  else if (ei < 110) document.querySelector('.grade-f').classList.add('active');
+  else document.querySelector('.grade-g').classList.add('active');
+}
+
+function getSavedData() { return JSON.parse(localStorage.getItem('refrig_calc') || '{}'); }
+
+function calcEnergy() {
+  const s = getSavedData();
+  const P_input_W = parseFloat(document.getElementById('P_input_W').value) || 0;
+  const runtime_factor = parseFloat(document.getElementById('runtime_factor').value) || 0.40;
+  const AE_kWh_year = (P_input_W / 1000) * 24 * 365 * runtime_factor;
+
+  document.getElementById('disp_AE').textContent = Math.round(AE_kWh_year) + ' kWh/年';
+
+  // EU ErP
+  const V_total = (parseFloat(s.vol?.V_R) || 200) + (parseFloat(s.vol?.V_F) || 60);
+  const AE_std = (124 + 0.233 * V_total);
+  const EEI = (AE_kWh_year / AE_std) * 100;
+  updateErPGrade(EEI);
+  document.getElementById('erp_result').textContent = `EEI = ${EEI.toFixed(0)}（${['A','B','C','D','E','F','G'][Math.min(6, Math.floor(EEI/15))]} 級）`;
+
+  // 台灣 MEPS（使用等效容積法）
+  const tw_V_R = parseFloat(document.getElementById('tw_V_R').value) || 200;
+  const tw_V_F = parseFloat(document.getElementById('tw_V_F').value) || 60;
+  const tw_star = parseFloat(document.getElementById('tw_star').value) || 3;
+  const tw_cool = document.getElementById('tw_cool_type').value === 'fan';
+  const tw = RefrigCalc.calcTaiwanMEPSV2(tw_V_R, tw_V_F, AE_kWh_year, tw_star, tw_cool);
+
+  document.getElementById('tw_V_eq_disp').textContent = tw.V_eq + ' L';
+  document.getElementById('r_tw_V_eq').textContent = tw.V_eq + ' L';
+  document.getElementById('r_tw_AE').textContent = Math.round(AE_kWh_year) + ' kWh/年';
+  document.getElementById('r_tw_monthly').textContent = tw.monthly_kWh + ' kWh/月';
+  document.getElementById('r_tw_EF_actual').textContent = tw.EF_actual + ' L/kWh/月';
+  document.getElementById('r_tw_EF_base').textContent = tw.EF_base + ' L/kWh/月';
+  document.getElementById('r_tw_ratio').textContent = tw.ratio_pct + '%';
+  const passEl = document.getElementById('r_tw_pass');
+  passEl.innerHTML = tw.pass
+    ? '<span class="pass-ok">合格</span>'
+    : '<span class="pass-fail">不合格</span>';
+
+  // VIP 分析
+  const vip_U = parseFloat(document.getElementById('vip_U').value) || 0.35;
+  const vip_ins = parseFloat(document.getElementById('vip_ins').value) || 50;
+  const vip_analysis = RefrigCalc.calcVIPBenefit(vip_ins, vip_U, 0.021);
+  document.getElementById('vip_result').style.display = 'block';
+  document.getElementById('r_vip_save').textContent = vip_analysis.saving_mm + ' mm';
+  document.getElementById('r_vip_pct').textContent = vip_analysis.saving_pct + '%';
+  document.getElementById('r_vip_needed').textContent = vip_analysis.VIP_needed_mm + ' mm';
+
+  // 變頻節能分析
+  const inv_pct = parseFloat(document.getElementById('inv_pct').value) / 100 || 0.30;
+  const elec_price = parseFloat(document.getElementById('elec_price').value) || 4;
+  const inv_save = AE_kWh_year * inv_pct;
+  const per_L = AE_kWh_year / (tw_V_R + tw_V_F);
+  document.getElementById('inv_result').style.display = 'block';
+  document.getElementById('r_inv_save').textContent = Math.round(inv_save * elec_price) + ' 元/年';
+  document.getElementById('r_per_L').textContent = per_L.toFixed(2) + ' kWh/L/年';
+
+  // 儲存
+  s.energy = { AE_kWh_year: Math.round(AE_kWh_year), runtime_factor, per_L: per_L.toFixed(2), EEI: EEI.toFixed(0) };
+  localStorage.setItem('refrig_calc', JSON.stringify(s));
+}
+
+window.addEventListener('load', () => {
+  const s = getSavedData();
+  // 自動填入來自 Step 1-3 的資料
+  if (s.compressor?.P_input_W) {
+    document.getElementById('P_input_W').value = s.compressor.P_input_W;
+  }
+  if (s.vol?.V_R) {
+    document.getElementById('tw_V_R').value = Math.round(parseFloat(s.vol.V_R));
+    document.getElementById('tw_V_F').value = Math.round(parseFloat(s.vol.V_F));
+  }
+  if (s.wall_R?.U_wall) {
+    document.getElementById('vip_U').value = s.wall_R.U_wall;
+  }
+  calcEnergy();
+});
+
+function runSelfCheck() {
+  const V_R = parseFloat(document.getElementById('sc_V_R').value) || 350;
+  const V_F = parseFloat(document.getElementById('sc_V_F').value) || 125;
+  const star = parseFloat(document.getElementById('sc_star').value) || 3;
+  const T_o = parseFloat(document.getElementById('sc_T_o').value) || 30;
+  const RH = parseFloat(document.getElementById('sc_RH').value) || 85;
+  const T_i = parseFloat(document.getElementById('sc_T_i').value) || -18;
+  const Q = parseFloat(document.getElementById('sc_Q').value) || 16.8;
+  const S = parseFloat(document.getElementById('sc_S').value) || 1.0;
+  const alpha_i = parseFloat(document.getElementById('sc_alpha').value) || 10;
+  const lambda_kcal = parseFloat(document.getElementById('sc_lambda').value) || 0.017;
+  const Q_L = parseFloat(document.getElementById('sc_QL').value) || 53.34;
+  const PR = parseFloat(document.getElementById('sc_PR').value) || 0.50;
+
+  // 1. Equivalent volume
+  const vol_eq = RefrigCalc.calcEquivVolume(V_R, V_F, star);
+  const K_val = vol_eq.K;
+
+  // 2. MEPS EF_base
+  const isLarge = vol_eq.V_eq >= 400;
+  const EF_base = isLarge
+    ? (1.3 * vol_eq.V_eq) / (0.031 * vol_eq.V_eq + 21.0) * 1.308
+    : (1.3 * vol_eq.V_eq) / (0.037 * vol_eq.V_eq + 24.3) * 1.308;
+
+  // 3. Dew point
+  const T_dp = RefrigCalc.calcDewPoint(T_o, RH);
+  const K_kcal = Q / S / (T_dp - T_i);
+
+  // 4. Min insulation thickness
+  const d_m = (1 / K_kcal - 1 / alpha_i) * lambda_kcal;
+  const d_mm = d_m * 1000;
+
+  // 5. Test load
+  const tl = RefrigCalc.calcTestLoad(V_F);
+
+  // 6. System capacity
+  const sc = RefrigCalc.calcSystemCapacity(Q_L, PR);
+
+  // Display results
+  document.getElementById('sc_results').style.display = 'block';
+
+  document.getElementById('sc_r_Veq').textContent =
+    vol_eq.V_eq + ' L  (基準: 572.5 L)';
+  document.getElementById('sc_m_Veq').textContent =
+    Math.abs(vol_eq.V_eq - 572.5) < 1 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_Veq').style.color =
+    Math.abs(vol_eq.V_eq - 572.5) < 1 ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_EFbase').textContent =
+    EF_base.toFixed(1) + ' L/kWh/月  (基準: 25.1)';
+  document.getElementById('sc_m_EFbase').textContent =
+    Math.abs(EF_base - 25.1) < 0.5 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_EFbase').style.color =
+    Math.abs(EF_base - 25.1) < 0.5 ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_Tdp').textContent =
+    T_dp.toFixed(1) + ' °C  (基準: 27.2 °C)';
+
+  document.getElementById('sc_r_K').textContent =
+    K_kcal.toFixed(4) + ' kcal/h·m²·°C  (基準: 0.3720)';
+  document.getElementById('sc_m_K').textContent =
+    Math.abs(K_kcal - 0.372) < 0.005 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_K').style.color =
+    Math.abs(K_kcal - 0.372) < 0.005 ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_d').textContent =
+    d_mm.toFixed(1) + ' mm  (基準: 44.0 mm)';
+  document.getElementById('sc_m_d').textContent =
+    Math.abs(d_mm - 44) < 2 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_d').style.color =
+    Math.abs(d_mm - 44) < 2 ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_TL').textContent =
+    tl.testLoad_kg + ' kg  (基準: 4.375 kg)';
+  document.getElementById('sc_m_TL').textContent =
+    Math.abs(tl.testLoad_kg - 4.375) < 0.01 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_TL').style.color =
+    Math.abs(tl.testLoad_kg - 4.375) < 0.01 ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_QE').textContent =
+    sc.Q_E_kcalh + ' kcal/h / ' + sc.Q_E_W + ' W  (基準: 106.68 kcal/h)';
+  document.getElementById('sc_m_QE').textContent =
+    Math.abs(sc.Q_E_kcalh - 106.68) < 0.1 ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_QE').style.color =
+    Math.abs(sc.Q_E_kcalh - 106.68) < 0.1 ? '#2e7d32' : '#c62828';
+
+  // Summary
+  const all_match = [
+    Math.abs(vol_eq.V_eq - 572.5) < 1,
+    Math.abs(EF_base - 25.1) < 0.5,
+    Math.abs(K_kcal - 0.372) < 0.005,
+    Math.abs(d_mm - 44) < 2,
+    Math.abs(tl.testLoad_kg - 4.375) < 0.01,
+    Math.abs(sc.Q_E_kcalh - 106.68) < 0.1,
+  ];
+  const pass_count = all_match.filter(Boolean).length;
+  document.getElementById('sc_summary').textContent =
+    '自檢結果：' + pass_count + ' / ' + all_match.length + ' 項目通過';
+  document.getElementById('sc_summary').style.color =
+    pass_count === all_match.length ? '#2e7d32' : '#e53935';
+}
+
+function runSRC48DV() {
+  // 自動填入 SR-C48DV 參數
+  document.getElementById('sc_V_R').value = 350;
+  document.getElementById('sc_V_F').value = 125;
+  document.getElementById('sc_star').value = '4';  // 四星級 K=1.78
+  document.getElementById('sc_T_o').value = 30;
+  document.getElementById('sc_RH').value = 85;
+  document.getElementById('sc_T_i').value = -18;
+  document.getElementById('sc_Q').value = 16.8;
+  document.getElementById('sc_S').value = 1.0;
+  document.getElementById('sc_alpha').value = 10;
+  document.getElementById('sc_lambda').value = 0.017;
+  document.getElementById('sc_QL').value = 53.34;
+  document.getElementById('sc_PR').value = 0.50;
+
+  // 執行自檢並自動生成 SR-C48DV 專用報告
+  const result = RefrigCalc.generateSelfCheckSRC48DV();
+
+  document.getElementById('sc_results').style.display = 'block';
+
+  // 第一題
+  document.getElementById('sc_r_Veq').textContent =
+    result.V_eq + ' L  (基準: 572.5 L)';
+  const v_eq_ok = Math.abs(result.V_eq - 572.5) < 0.1;
+  document.getElementById('sc_m_Veq').textContent = v_eq_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_Veq').style.color = v_eq_ok ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_EFbase').textContent =
+    result.EF_base + ' L/kWh/月  (基準: 25.1)';
+  const ef_ok = Math.abs(result.EF_base - 25.1) < 0.3;
+  document.getElementById('sc_m_EFbase').textContent = ef_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_EFbase').style.color = ef_ok ? '#2e7d32' : '#c62828';
+
+  // 防結露 T_dp
+  const T_dp = RefrigCalc.calcDewPoint(30, 85);
+  document.getElementById('sc_r_Tdp').textContent = T_dp.toFixed(1) + ' °C  (基準: 27.2 °C)';
+
+  // K 值（使用 calcMinInsulationKcal 計算）
+  const ins = RefrigCalc.calcMinInsulationKcal(30, 85, -18, 16.8, 1.0, 10, 0.017);
+  document.getElementById('sc_r_K').textContent =
+    ins.K_kcal + ' kcal/h·m²·°C  (基準: 0.3720)';
+  const k_ok = Math.abs(ins.K_kcal - 0.372) < 0.005;
+  document.getElementById('sc_m_K').textContent = k_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_K').style.color = k_ok ? '#2e7d32' : '#c62828';
+
+  document.getElementById('sc_r_d').textContent =
+    ins.d_mm + ' mm  (基準: 44.0 mm)';
+  const d_ok = Math.abs(ins.d_mm - 44) < 2;
+  document.getElementById('sc_m_d').textContent = d_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_d').style.color = d_ok ? '#2e7d32' : '#c62828';
+
+  // Test Load
+  const tl = RefrigCalc.calcTestLoad(125);
+  document.getElementById('sc_r_TL').textContent =
+    tl.testLoad_kg + ' kg  (基準: 4.375 kg)';
+  const tl_ok = Math.abs(tl.testLoad_kg - 4.375) < 0.01;
+  document.getElementById('sc_m_TL').textContent = tl_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_TL').style.color = tl_ok ? '#2e7d32' : '#c62828';
+
+  // 蒸發器能力 Q_E
+  document.getElementById('sc_r_QE').textContent =
+    result.compressor.Q_E_kcalh + ' kcal/h / ' + result.compressor.Q_E_W + ' W  (基準: 138.8 kcal/h)';
+  const qe_ok = Math.abs(result.compressor.Q_E_kcalh - 138.8) < 1;
+  document.getElementById('sc_m_QE').textContent = qe_ok ? 'PASS' : 'FAIL';
+  document.getElementById('sc_m_QE').style.color = qe_ok ? '#2e7d32' : '#c62828';
+
+  // VIP複合牆體（額外顯示）
+  document.getElementById('sc_summary').textContent =
+    'V_eq=' + result.V_eq + 'L | EF=' + result.EF_base + ' | G=' + result.compressor.G_kg_h + 'kg/h | PR=' + result.compressor.PR_pct + '% | K_Fv=' + result.VIP.K_Fv + ' | Q_Fv=' + result.VIP.Q_kcalh + 'kcal/h';
+  document.getElementById('sc_summary').style.color = '#1565c0';
+
+  // Summary count for SR-C48DV case
+  const all_pass = [v_eq_ok, ef_ok, k_ok, d_ok, tl_ok, qe_ok].every(Boolean);
+  if (all_pass) {
+    document.getElementById('sc_summary').textContent += '  → 全部通過';
+  }
+}
+
+</script>
+</body>
+</html>

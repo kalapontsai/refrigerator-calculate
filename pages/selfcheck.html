@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Calculator Self-Check - SR-C48DV</title>
+<style>
+body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+h1 { color: #00d4ff; }
+.test-section { margin: 20px 0; padding: 15px; background: #16213e; border-left: 4px solid #0f3460; }
+.pass { color: #4eff4e; }
+.fail { color: #ff4e4e; }
+.ref { color: #888; }
+table { border-collapse: collapse; width: 100%; max-width: 700px; }
+td { padding: 6px 12px; border-bottom: 1px solid #333; }
+td:first-child { color: #ffd700; }
+.actual { color: #00d4ff; }
+.summary { font-size: 1.3em; margin-top: 20px; padding: 15px; background: #0f3460; }
+</style>
+</head>
+<body>
+<h1>冰箱計算系統 - 完整自檢</h1>
+<div id="results">載入中...</div>
+
+<script src="../js/calculator.js"></script>
+<script>
+const R = window.RefrigCalc;
+
+function line(label, actual, ref, pass, unit) {
+  const passClass = pass ? 'pass' : 'fail';
+  return '<tr><td>' + label + '</td><td class="actual">' + actual + ' ' + unit + 
+         '</td><td class="ref">(ref: ' + ref + ')</td><td class="' + passClass + '">' + 
+         (pass ? 'PASS' : 'FAIL') + '</td></tr>';
+}
+
+function section(title) {
+  return '<div class="test-section"><table>' + 
+         '<tr><td colspan="4" style="color:#ffd700;font-size:1.1em;padding:8px">' + title + '</td></tr>';
+}
+
+function endSection() { return '</table></div>'; }
+
+let html = '';
+const r = R.generateSelfCheckRefAll();
+
+html += section('【項目一】露點與防結露');
+html += line('T_dp', r.item1.T_dp.toFixed(1), '27.2°C', r.item1.T_dp_pass, '°C');
+html += line('d_min', r.item1.d_min_mm.toFixed(0), '44 mm', r.item1.d_min_pass, 'mm');
+html += endSection();
+
+html += section('【項目二】機構漏熱');
+html += line('Q_packing', r.item2.Q_packing_kcalh.toFixed(3), '8.064 kcal/h', r.item2.packing_pass, 'kcal/h');
+html += line('Q_Fdpf', r.item2.Q_Fdpf_kcalh.toFixed(2), '3.10 kcal/h', r.item2.dpc_pass, 'kcal/h');
+html += endSection();
+
+html += section('【項目三】冷風迴路');
+html += line('gamma', r.item3.gamma.toFixed(4), '1.359 kg/m³', r.item3.gamma_pass, 'kg/m³');
+html += line('M_R', r.item3.M_R_m3h.toFixed(2), '5.49 m³/h', r.item3.M_R_pass, 'm³/h');
+html += endSection();
+
+html += section('【項目四】IEC 產品冷卻');
+html += line('m_test', r.item4.m_test_kg.toFixed(3), '4.375 kg', r.item4.m_test_pass, 'kg');
+html += line('Q_food', r.item4.Q_food_kcalh.toFixed(2), '8.75 kcal/h', r.item4.Q_food_pass, 'kcal/h');
+html += endSection();
+
+html += section('【項目五】PR=70% 匹配');
+html += line('Q_U', r.item5.Q_U_kcalh, '76.2 kcal/h', r.item5.Q_U_pass, 'kcal/h');
+html += line('G', r.item5.G_kg_h.toFixed(4), '1.323 kg/h', r.item5.G_pass, 'kg/h');
+html += line('N', r.item5.N_rps, '32.9 RPS', r.item5.N_pass, 'RPS');
+html += line('inRange [17,80]', r.item5.inRange ? 'YES' : 'NO', 'YES', r.item5.inRange, '');
+html += endSection();
+
+const allItems = [r.item1.T_dp_pass, r.item1.d_min_pass, r.item2.packing_pass, r.item2.dpc_pass,
+                  r.item3.gamma_pass, r.item3.M_R_pass, r.item4.m_test_pass, r.item4.Q_food_pass,
+                  r.item5.Q_U_pass, r.item5.G_pass, r.item5.N_pass, r.item5.inRange];
+const passCount = allItems.filter(Boolean).length;
+html += '<div class="summary">' + (r.all_pass ? '全部通過: <span class="pass">PASS</span>' : 
+  '通過 ' + passCount + '/' + allItems.length + ' 項') + '</div>';
+
+document.getElementById('results').innerHTML = html;
+</script>
+</body>
+</html>

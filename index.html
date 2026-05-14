@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>冰箱制冷能力計算系統 | ASHRAE 2022</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>冰箱制冷能力計算系統</h1>
+    <p>設計流程：機構尺寸 → 制冷能力 → 壓縮機選型 → 能耗評估 → 報告輸出 | 知識來源：ASHRAE 2022 Handbook - Refrigeration</p>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-page="cabinet" onclick="showSheet('cabinet')">Step 1<br><small>機構尺寸</small></button>
+  <button data-page="cooling_load" onclick="showSheet('cooling_load')">Step 2<br><small>制冷能力</small></button>
+  <button data-page="compressor" onclick="showSheet('compressor')">Step 3<br><small>壓縮機</small></button>
+  <button data-page="energy" onclick="showSheet('energy')">Step 4<br><small>能耗</small></button>
+  <button data-page="report" onclick="showSheet('report')">Step 5<br><small>報告</small></button>
+</nav>
+
+<div class="container">
+  <!-- Step 1: 機構尺寸 -->
+  <iframe id="page-cabinet" src="pages/cabinet.html" class="active" style="display:block;"></iframe>
+  <!-- Step 2: 制冷能力 -->
+  <iframe id="page-cooling_load" src="pages/cooling_load.html" style="display:none;"></iframe>
+  <!-- Step 3: 壓縮機 -->
+  <iframe id="page-compressor" src="pages/compressor.html" style="display:none;"></iframe>
+  <!-- Step 4: 能耗 -->
+  <iframe id="page-energy" src="pages/energy.html" style="display:none;"></iframe>
+  <!-- Step 5: 報告 -->
+  <iframe id="page-report" src="pages/report.html" style="display:none;"></iframe>
+</div>
+
+<footer>
+  冰箱制冷能力計算系統 v1.0 — 資料來源：ASHRAE 2022 Handbook — Refrigeration (SI) | 計算結果僅供參考，請以實際測試為準
+</footer>
+
+<script>
+// 跨 iframe 通訊：讓子頁面可以呼叫導航
+function showSheet(name) {
+  document.querySelectorAll('iframe').forEach(iframe => iframe.style.display = 'none');
+  const target = document.getElementById('page-' + name);
+  if (target) target.style.display = 'block';
+
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`nav button[data-page="${name}"]`).classList.add('active');
+}
+
+// 讓子頁面可以呼叫 parent.showSheet
+window.showSheet = showSheet;
+window.goTo = showSheet;
+
+// 從 iframe 內部呼叫：parent.showSheet('page_name')
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'navigate') {
+    showSheet(e.data.page);
+  }
+});
+</script>
+
+</body>
+</html>
