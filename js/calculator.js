@@ -64,14 +64,31 @@ function calcVolumeV2(width_mm, depth_mm, height_mm, ins_R_mm, ins_F_mm, door_ra
 
 // ===== 防結露最小隔熱厚度 =====
 /**
- * 計算防結露最小隔熱厚度
- * 每個艙室可能面對不同的表面溫度要求
+ * 計算防結露最小隔熱厚度（維度修正版）
+ * 修正依據：穩態熱傳導 + 外表面溫度恆等式
+ * 確保外表面溫度 T_s > 露點溫度 T_dp
+ *
+ * 公式推導：
+ *   1/U = 1/h_o + d/λ + 1/h_i
+ *   T_s = T_o - (T_o - T_i) * (1/h_o) / (1/h_o + d/λ + 1/h_i)
+ *   令 T_s = T_dp，求 d：
+ *   d_min = λ * [ (T_o - T_i) / (h_o * (T_o - T_dp)) - (1/h_o) - (1/h_i) ]
+ *
+ * @param T_o 環境溫度 (°C)
+ * @param T_i 艙內溫度 (°C)
+ * @param T_dp 露點溫度 (°C)
+ * @param h_o 外部熱傳遞係數 (W/m²·K)，預設 6
+ * @param h_i 內部熱傳遞係數 (W/m²·K)，預設 10
+ * @param lambda 隔熱材導熱係數 (W/m·K)，預設 0.022
+ * @returns d_min (mm)
  */
-function calcMinInsulation(T_o, T_i, T_dp, alpha_o = 6, lambda = 0.022) {
-  const numer = lambda * (T_o - T_dp);
-  const denom = alpha_o * (T_o - T_i) - (T_o - T_dp);
-  if (denom <= 0) return 0;
-  return Math.max(0, (numer / denom) * 1000);
+function calcMinInsulation(T_o, T_i, T_dp, h_o = 6, h_i = 10, lambda = 0.022) {
+  const numerator = lambda * (
+    (T_o - T_i) / (h_o * (T_o - T_dp)) - (1 / h_o) - (1 / h_i)
+  );
+  if (T_o <= T_dp) return 0; // 露點高於環境，無意義
+  const d_m = Math.max(0, numerator);
+  return Math.max(0, d_m * 1000);
 }
 
 // ===== 單艙室箱壁負荷 =====
@@ -115,45 +132,135 @@ function calcCompartmentWallLoad(dims, ins_mm, lambda, Ti, To, doorAreaPct = 0.7
 }
 
 // ===== 開門侵入負荷（單艙室）=====
-function calcDoorLoad(volume_L, Ti, To, openTimesPerDay = 15, openDurationMin = 0.5) {
-  const rho_air = 1.2; // kg/m³
-  const Cp_air = 1005; // J/(kg·K)
+/**
+ * 計算開門侵入負荷（修正版）
+ * 修正內容：
+ *   - 原本固定 10% 換氣率，改為依艙室類型的換氣係數 f：
+ *     冷藏室 f=0.5, 冷凍室 f=0.3
+ *   - 加入潛熱凝結補償係數 1.4（水氣凝結潛熱效應）
+ *   - 動態套用使用者的 open_times 輸入值
+ *
+ * 新公式：
+ *   Q_door = (V × open_times × f × ρ_air × Cp_air × ΔT × 1.4) / (24 × 3600)
+ *
+ * @param volume_L 艙室容積 (L)
+ * @param Ti 艙內溫度 (°C)
+ * @param To 環境溫度 (°C)
+ * @param openTimesPerDay 每日開門次數（來自使用者輸入）
+ * @param openDurationMin 每次開門持續分鐘數（僅用於估算換氣量，保留舊參數）
+ * @param f 換氣係數（冷藏室=0.5, 冷凍室=0.3）
+ */
+function calcDoorLoad(volume_L, Ti, To, openTimesPerDay = 15, openDurationMin = 0.5, f = 0.5) {
+  const rho_air = 1.2;    // kg/m³ @ 25°C
+  const Cp_air = 1005;   // J/(kg·K)
+  const latent_factor = 1.4; // 潛熱凝結補償係數（含水氣凝結潛熱）
   const V_m3 = volume_L / 1000;
-  const airExchanged_m3 = V_m3 * 0.10 * openTimesPerDay; // 每次約10%置換（增加）
-  const Q_W = (airExchanged_m3 * rho_air * Cp_air * (To - Ti)) / (24 * 3600);
+  // 每次開門置換氣量 = V × f（換氣係數），乘上每日開門次數
+  const airExchanged_m3 = V_m3 * f * openTimesPerDay;
+  const delta_T = To - Ti;
+  const Q_W = (airExchanged_m3 * rho_air * Cp_air * delta_T * latent_factor) / (24 * 3600);
   return {
     Q_W: parseFloat(Q_W.toFixed(2)),
     Q_kcalh: parseFloat((Q_W * 0.86).toFixed(2)),
     airExchanged_m3_day: parseFloat(airExchanged_m3.toFixed(2)),
+    f,
+    latent_factor,
   };
 }
 
 // ===== 內部負載 =====
-function calcInternalLoad(light_W = 5, fan_W = 4, defrostPeak_W = 150, defrostsPerDay = 2, defrostDurationMin = 20) {
-  const defrostAvg_W = (defrostPeak_W * defrostsPerDay * defrostDurationMin) / (24 * 60);
-  const Q_W = light_W + fan_W + defrostAvg_W;
+/**
+ * 計算內部熱源負荷（修正版）
+ * 修正內容：
+ *   - 照明燈僅在開門時耗電，改為根據開門時間計算日平均功率
+ *   - 除霜熱負荷依據實際每日除霜次數與時間攤提
+ *   - 風扇假設為常時運轉（或乘上運轉係數 RF）
+ *
+ * 照明功率計算：
+ *   daily_light_hours = (open_times × open_min) / 60
+ *   avg_light_W = (light_W × daily_light_hours) / 24
+ *
+ * 除霜功率計算：
+ *   avg_defrost_W = (defrost_W × defrost_times × defrost_min) / (24 × 60)
+ *
+ * 總內部熱源：
+ *   Q_internal = avg_light_W + fan_W + avg_defrost_W
+ *
+ * @param light_W 照明峰值功率 (W)
+ * @param fan_W 風扇功率 (W)
+ * @param defrostPeak_W 除霜峰值功率 (W)
+ * @param defrostsPerDay 每日除霜次數
+ * @param defrostDurationMin 每次除霜時間 (min)
+ * @param open_times 每日開門次數（用於照明時間估算）
+ * @param open_min 每次開門持續分鐘數（用於照明時間估算）
+ */
+function calcInternalLoad(light_W = 5, fan_W = 4, defrostPeak_W = 150,
+                          defrostsPerDay = 2, defrostDurationMin = 20,
+                          open_times = 0, open_min = 0) {
+  // 照明：僅開門時亮，依開門時間攤提日平均功率
+  const daily_light_hours = (open_times * open_min) / 60;
+  const avg_light_W = (light_W * daily_light_hours) / 24;
+
+  // 除霜：依每日次數與時間攤提
+  const avg_defrost_W = (defrostPeak_W * defrostsPerDay * defrostDurationMin) / (24 * 60);
+
+  // 風扇：假設常時運轉（如有需求可乘上運轉係數 RF）
+  const Q_W = avg_light_W + fan_W + avg_defrost_W;
+
+  const avg_defrost_compat = (defrostPeak_W * defrostsPerDay * defrostDurationMin) / (24 * 60);
+
   return {
     Q_W: parseFloat(Q_W.toFixed(2)),
     breakdown: {
-      light_W,
-      fan_W,
-      defrostAvg_W: parseFloat(defrostAvg_W.toFixed(2)),
+      light_W: light_W,
+      avg_light_W: parseFloat(avg_light_W.toFixed(3)),      // 日平均照明功率
+      fan_W: fan_W,
+      avg_defrost_W: parseFloat(avg_defrost_W.toFixed(3)),  // 日平均除霜功率
+      daily_light_hours: parseFloat(daily_light_hours.toFixed(2)),
+    },
+    // 保留舊版參數相容性（假設燈常亮、除霜固定）
+    _legacy: {
+      defrostAvg_W: parseFloat(avg_defrost_compat.toFixed(2)),
     },
   };
 }
 
 // ===== 單艙室總負荷 =====
+/**
+ * 計算單一艙室總負荷（修正版）
+ * 修正內容：
+ *   - 將安全係數 (15%) 獨立為一個顯示項目，而非隱藏在倍數放大中
+ *   - 基礎總負荷 = Q_wall + Q_door + Q_internal + Q_product
+ *   - 安全餘裕 = 基礎總負荷 × 0.15
+ *   - 最終總負荷 = 基礎總負荷 + 安全餘裕
+ *
+ * @param wallLoad 箱壁負荷物件
+ * @param doorLoad 開門負荷物件
+ * @param internalLoad 內部熱源物件
+ * @param safetyFactor 安全係數（預設 1.15，即 15%）
+ */
 function calcCompartmentTotalLoad(wallLoad, doorLoad, internalLoad, safetyFactor = 1.15) {
   // 食品呼吸熱（冷藏室約3%，冷凍室約0.3%）
   const productFactor = wallLoad.deltaT > 15 ? 0.03 : 0.003;
   const Q_product = wallLoad.Q_W * productFactor;
-  const Q_total = (wallLoad.Q_W + doorLoad.Q_W + internalLoad.Q_W + Q_product) * safetyFactor;
+
+  // 基礎總負荷（不含安全係數）
+  const Q_base_total = wallLoad.Q_W + doorLoad.Q_W + internalLoad.Q_W + Q_product;
+
+  // 安全餘裕（15%，獨立顯示）
+  const Q_safety_margin = Q_base_total * 0.15;
+
+  // 最終總負荷（含安全餘裕）
+  const Q_total = Q_base_total + Q_safety_margin;
+
   return {
     Q_total_W: parseFloat(Q_total.toFixed(2)),
+    Q_base_total_W: parseFloat(Q_base_total.toFixed(2)),  // 基礎負荷（不含安全係數）
     Q_wall_W: wallLoad.Q_W,
     Q_door_W: doorLoad.Q_W,
     Q_internal_W: internalLoad.Q_W,
     Q_product_W: parseFloat(Q_product.toFixed(2)),
+    Q_safety_margin_W: parseFloat(Q_safety_margin.toFixed(2)), // 獨立的安全餘裕
     safetyFactor,
   };
 }

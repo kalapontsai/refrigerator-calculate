@@ -34,14 +34,21 @@ $$K_{cond} = \frac{Q/S}{T_{dp} - T_i}, \quad d_{min} = \left(\frac{1}{K_{cond}} 
 ### 3.1 牆體傳熱負荷
 $$Q_{wall} = \frac{\Delta T \times A}{R_{total}}, \quad R_{total} = \frac{ins}{\lambda} + \frac{1}{\alpha_i} + \frac{1}{\alpha_o}$$
 
-### 3.2 開門負荷
-$$Q_{door} = V \times \rho_{air} \times C_p \times (T_o - T_i) \times \frac{n \times t}{24}$$
+### 3.2 開門負荷（修正版）
+$$Q_{door} = \frac{V \times open\_times \times f \times \rho_{air} \times C_p \times \Delta T \times 1.4}{24 \times 3600}$$
+- $f = 0.5$（冷藏室）/ $0.3$（冷凍室）：換氣係數
+- $\rho_{air} = 1.2$ kg/m³, $C_p = 1005$ J/(kg·K)
+- $1.4$：潛熱凝結補償係數（水氣凝結潛熱效應）
 
-### 3.3 內部熱負荷（電氣部件）
-$$Q_{internal} = \left[ W_{fan} \times PR + W_{light} + W_{defrost} \times n_{def} \times \frac{t_{def}}{60} \right] \times 0.86$$
+### 3.3 內部熱負荷（修正版）
+$$Q_{internal} = avg\_light\_W + W_{fan} + avg\_defrost\_W$$
+- $avg\_light\_W = W_{light} \times \frac{open\_times \times open\_min / 60}{24}$（照明僅開門時耗電）
+- $avg\_defrost\_W = \frac{W_{defrost} \times n_{def} \times t_{def}}{24 \times 60}$（除霜熱攤提）
 
-### 3.4 艙室總熱負荷（含安全係數）
-$$Q_{total} = (Q_{wall} + Q_{door} + Q_{internal}) \times 1.15$$
+### 3.4 艙室總熱負荷（安全係數獨立版）
+$$Q_{base} = Q_{wall} + Q_{door} + Q_{internal} + Q_{product}$$
+$$Q_{safety} = Q_{base} \times 15\% \quad \text{（安全餘裕，獨立顯示）}$$
+$$Q_{total} = Q_{base} + Q_{safety}$$
 
 ---
 

@@ -71,7 +71,7 @@ refrigerator/
 | 冷藏室表面積 | `A_total = 2·(w·d + d·h + h·w) / 10^6` m²（外部尺寸） |
 | 冷藏室 U 值（牆壁） | `U_wall = 1 / (1/h_i + d_m/λ + 1/h_o)`，h_i=10, h_o=6 W/(m²·K) |
 | 冷凍室 U 值（牆壁） | 同上，各自代入參數 |
-| 冷藏室防結露最小厚度 | `d_min = λ·(To-Tdp) / (α_o·(To-Ti) - (To-Tdp)) × 1000` mm |
+| 冷藏室防結露最小厚度 | `d_min = λ × [ (T_o - T_i) / (h_o × (T_o - T_dp)) - (1/h_o) - (1/h_i) ] × 1000` mm |
 | 冷凍室防結露最小厚度 | 同上，各自代入參數 |
 | 等效內容積（K=1.78） | `Veq = VR + 1.78 × VF` L |
 
@@ -88,10 +88,10 @@ refrigerator/
 | 欄位 | 說明 |
 |------|------|
 | 冷藏室箱壁傳導負荷 | `Q_wall = (U_wall·A_wall + U_door·A_door) × ΔT`，其中 ΔT = To - Ti |
-| 冷藏室開門侵入負荷 | `Q_door = V·10%·ρ_air·Cp_air·ΔT / (24h)`，ρ_air=1.2 kg/m³, Cp_air=1005 J/(kg·K) |
-| 冷藏室內部熱源 | `Q_internal = light_W + fan_W + (defrost_W × defrost_times × defrost_min) / (24×60)` |
+| 冷藏室開門侵入負荷 | `Q_door = (V × open_times × f × ρ_air × Cp_air × ΔT × 1.4) / (24×3600)`，f=0.5冷藏/0.3冷凍，ρ_air=1.2 kg/m³, Cp_air=1005 J/(kg·K)，1.4=潛熱凝結補償 |
+| 冷藏室內部熱源 | `Q_internal = avg_light_W + fan_W + avg_defrost_W`<br>avg_light = light_W × (open_times×open_min/60) / 24 |
 | 冷藏室食品熱負荷 | `Q_product = Q_wall × 3%`（冷藏室） |
-| 冷藏室總負荷（含安全係數 1.15） | `Q_R = (Q_wall + Q_door + Q_internal + Q_product) × 1.15` W |
+| 冷藏室總負荷（含安全係數） | `Q_base = Q_wall + Q_door + Q_internal + Q_product`<br>`Q_safety = Q_base × 15%`（安全餘裕，獨立顯示）<br>`Q_R = Q_base + Q_safety` |
 | 冷凍室箱壁傳導負荷 | 同上，各自代入參數 |
 | 冷凍室開門侵入負荷 | 同上 |
 | 冷凍室內部熱源 | 照明+風扇（無除霜） |
@@ -99,7 +99,7 @@ refrigerator/
 | 冷凍室總負荷（含安全係數 1.15） | `Q_F = (Q_wall + Q_door + Q_internal + Q_product) × 1.15` W |
 | 系統總制冷負荷 | `Q_total = Q_R + Q_F` W |
 
-> 熱負荷圖表由 Chart.js 甜甜圈圖呈現 8 項分類。
+> 熱負荷圖表由 Chart.js 甜甜圈圖呈現 10 項分類（8項熱負荷 + 2項安全餘裕）。
 
 ---
 

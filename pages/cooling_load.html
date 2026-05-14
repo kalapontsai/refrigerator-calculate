@@ -93,8 +93,13 @@
     <div class="section-title">計算公式</div>
     <div class="formula-block">
       <b>箱壁傳導：</b>Q<sub>wall</sub> = U × A × ΔT<br>
-      <b>開門侵入：</b>Q<sub>door</sub> = V × 10% × ρ<sub>air</sub> × C<sub>p,air</sub> × ΔT / (24h)<br>
-      <b>總負荷：</b>Q<sub>total</sub> = (Q<sub>wall</sub> + Q<sub>door</sub> + Q<sub>internal</sub> + Q<sub>product</sub>) × 1.15
+      <b>開門侵入（修正版）：</b>Q<sub>door</sub> = V × open_times × f × ρ<sub>air</sub> × C<sub>p,air</sub> × ΔT × 1.4 / (24×3600)<br>
+      <span style="font-size:0.85em;color:#555;">&nbsp;&nbsp;（f=0.5冷藏/0.3冷凍，1.4=潛熱補償係數）</span><br>
+      <b>內部熱源（修正版）：</b>Q<sub>internal</sub> = avg_light_W + fan_W + avg_defrost_W<br>
+      <span style="font-size:0.85em;color:#555;">&nbsp;&nbsp;（照明僅開門時耗電：avg_light = light_W × (open_times×open_min/60) / 24）</span><br>
+      <b>基礎負荷：</b>Q<sub>base</sub> = Q<sub>wall</sub> + Q<sub>door</sub> + Q<sub>internal</sub> + Q<sub>product</sub><br>
+      <b>安全餘裕：</b>Q<sub>safety</sub> = Q<sub>base</sub> × 15%<br>
+      <b>最終總負荷：</b>Q<sub>total</sub> = Q<sub>base</sub> + Q<sub>safety</sub>
     </div>
   </div>
 
@@ -170,15 +175,19 @@ function calcCoolingLoad() {
   // 冷藏室負荷
   const R_wall = RefrigCalc.calcCompartmentWallLoad(p.R.dims, p.R.ins_mm, p.R.lambda, p.R.Ti, T_o, p.R.door_ratio);
   const R_vol_L = (p.W - 2*p.R.ins_mm) * (p.D - 2*p.R.ins_mm) * (p.H_R - 2*p.R.ins_mm) / 1e6;
-  const R_door = RefrigCalc.calcDoorLoad(R_vol_L * 1000, p.R.Ti, T_o, p.R.open_times, p.R.open_min);
-  const R_internal = RefrigCalc.calcInternalLoad(p.R.light_W, p.R.fan_W, p.R.defrost_W, p.R.defrost_times, p.R.defrost_min);
+  // Task 2: 使用修正公式 f=0.5（冷藏室換氣係數）
+  const R_door = RefrigCalc.calcDoorLoad(R_vol_L * 1000, p.R.Ti, T_o, p.R.open_times, p.R.open_min, 0.5);
+  // Task 3: 照明僅開門時耗電，傳入 open_times 與 open_min
+  const R_internal = RefrigCalc.calcInternalLoad(p.R.light_W, p.R.fan_W, p.R.defrost_W, p.R.defrost_times, p.R.defrost_min, p.R.open_times, p.R.open_min);
   const R_total = RefrigCalc.calcCompartmentTotalLoad(R_wall, R_door, R_internal, 1.15);
 
   // 冷凍室負荷
   const F_wall = RefrigCalc.calcCompartmentWallLoad(p.F.dims, p.F.ins_mm, p.F.lambda, p.F.Ti, T_o, p.F.door_ratio);
   const F_vol_L = (p.W - 2*p.F.ins_mm) * (p.D - 2*p.F.ins_mm) * (p.H_F - 2*p.F.ins_mm) / 1e6;
-  const F_door = RefrigCalc.calcDoorLoad(F_vol_L * 1000, p.F.Ti, T_o, p.F.open_times, p.F.open_min);
-  const F_internal = RefrigCalc.calcInternalLoad(p.F.light_W, p.F.fan_W, 0, 0, 0);
+  // Task 2: 使用修正公式 f=0.3（冷凍室換氣係數）
+  const F_door = RefrigCalc.calcDoorLoad(F_vol_L * 1000, p.F.Ti, T_o, p.F.open_times, p.F.open_min, 0.3);
+  // Task 3: 照明僅開門時耗電，傳入 open_times 與 open_min
+  const F_internal = RefrigCalc.calcInternalLoad(p.F.light_W, p.F.fan_W || 0, 0, 0, 0, p.F.open_times || 0, p.F.open_min || 0);
   const F_total = RefrigCalc.calcCompartmentTotalLoad(F_wall, F_door, F_internal, 1.15);
 
   // 總負荷
@@ -187,18 +196,21 @@ function calcCoolingLoad() {
   // 更新 DOM - R
   document.getElementById('b_R_wall').textContent = R_wall.Q_W + ' W';
   document.getElementById('b_R_door').textContent = R_door.Q_W + ' W';
-  document.getElementById('b_R_internal').textContent = (R_internal.Q_W - (R_internal.breakdown?.defrostAvg_W || 0)).toFixed(1) + ' W';
+  // Task 3: 照明僅開門時耗電，除霜依實際次數分攤
+  document.getElementById('b_R_internal').textContent = R_internal.Q_W.toFixed(1) + ' W';
   document.getElementById('b_R_product').textContent = R_total.Q_product_W + ' W';
-  document.getElementById('b_R_safety').textContent = '+' + (R_total.Q_total_W - R_wall.Q_W - R_door.Q_W - R_internal.Q_W - R_total.Q_product_W).toFixed(1) + ' W';
+  // Task 4: 安全餘裕獨立顯示（使用 calcCompartmentTotalLoad 回傳的 Q_safety_margin_W）
+  document.getElementById('b_R_safety').textContent = '+' + R_total.Q_safety_margin_W.toFixed(1) + ' W';
   document.getElementById('b_R_total').textContent = R_total.Q_total_W + ' W';
   document.getElementById('sc_Q_R').textContent = R_total.Q_total_W + ' W';
 
   // 更新 DOM - F
   document.getElementById('b_F_wall').textContent = F_wall.Q_W + ' W';
   document.getElementById('b_F_door').textContent = F_door.Q_W + ' W';
-  document.getElementById('b_F_internal').textContent = F_internal.Q_W + ' W';
+  document.getElementById('b_F_internal').textContent = F_internal.Q_W.toFixed(1) + ' W';
   document.getElementById('b_F_product').textContent = F_total.Q_product_W + ' W';
-  document.getElementById('b_F_safety').textContent = '+' + (F_total.Q_total_W - F_wall.Q_W - F_door.Q_W - F_internal.Q_W - F_total.Q_product_W).toFixed(1) + ' W';
+  // Task 4: 安全餘裕獨立顯示
+  document.getElementById('b_F_safety').textContent = '+' + F_total.Q_safety_margin_W.toFixed(1) + ' W';
   document.getElementById('b_F_total').textContent = F_total.Q_total_W + ' W';
   document.getElementById('sc_Q_F').textContent = F_total.Q_total_W + ' W';
 
@@ -223,21 +235,27 @@ function renderChart(R, F) {
   const ctx = document.getElementById('loadChart').getContext('2d');
   if (loadChart) loadChart.destroy();
 
+  // Task 4: 安全係數獨立顯示，加入 "Safety Margin (15%)" 項目
+  // 圖表顯示：8項熱負荷 + 2項安全餘裕（冷藏、冷凍各一項）
   loadChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['冷藏-箱壁', '冷藏-開門', '冷藏-內部', '冷藏-食品',
-              '冷凍-箱壁', '冷凍-開門', '冷凍-內部', '冷凍-食品'],
+      labels: [
+        '冷藏-箱壁', '冷藏-開門', '冷藏-內部', '冷藏-食品', '冷藏-安全餘裕',
+        '冷凍-箱壁', '冷凍-開門', '冷凍-內部', '冷凍-食品', '冷凍-安全餘裕'
+      ],
       datasets: [{
         data: [
           R.Q_wall_W, R.Q_door_W,
-          (R.Q_internal_W - (R.Q_product_W * 0)), R.Q_product_W,
+          R.Q_internal_W, R.Q_product_W,
+          R.Q_safety_margin_W,  // Task 4: 冷藏室安全餘裕獨立顯示
           F.Q_wall_W, F.Q_door_W,
           F.Q_internal_W, F.Q_product_W,
+          F.Q_safety_margin_W,  // Task 4: 冷凍室安全餘裕獨立顯示
         ],
         backgroundColor: [
-          '#4a90d9', '#6ba3e0', '#8db8e8', '#b0cff0',
-          '#2d6a9f', '#3d7ab0', '#5d8ac0', '#7d9ad0',
+          '#4a90d9', '#6ba3e0', '#8db8e8', '#b0cff0', '#e67e22',  // 冷藏5項（安全餘裕為橙色）
+          '#2d6a9f', '#3d7ab0', '#5d8ac0', '#7d9ad0', '#c0392b',  // 冷凍5項（安全餘裕為紅色）
         ],
         borderWidth: 1,
       }]

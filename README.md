@@ -53,11 +53,20 @@ refrigerator/
 - 箱壁 U 值、熱傳係數
 - VIP 效益分析
 
-**公式來源：**
+**公式來源（已修正）：**
 ```
-防結露：d_min = λ × (T_o - T_dp) / (α_o × (T_o - T_i) - (T_o - T_dp))
+防結露（維度修正版）：
+d_min = λ × [ (T_o - T_i) / (h_o × (T_o - T_dp)) - (1/h_o) - (1/h_i) ] × 1000
 熱傳：U = 1 / (1/h_i + d/λ + 1/h_o)
 ASHRAE 2022 Chapter 17
+
+開門負荷（修正版）：
+Q_door = V × open_times × f × ρ_air × Cp × ΔT × 1.4 / (24×3600)
+f=0.5冷藏/0.3冷凍，1.4=潛熱補償
+
+內部熱源（修正版）：
+Q_internal = avg_light + fan + avg_defrost
+avg_light = light_W × (open_times × open_min / 60) / 24
 ```
 
 ---
@@ -74,10 +83,11 @@ ASHRAE 2022 Chapter 17
 | 負荷類型 | 符號 | 說明 |
 |---------|------|------|
 | 箱壁傳導 | Q_wall | U × A × ΔT |
-| 開門侵入 | Q_door | 空氣置換法（容積 × 8% × 開門次數） |
-| 內部負載 | Q_internal | 照明 + 風扇 + 除霜（平均） |
-| 食品負荷 | Q_product | 約 Q_wall × 5%（呼吸熱） |
-| **總計** | **Q_total** | **× 安全係數 1.15** |
+| 開門侵入 | Q_door | 容積 × open_times × f × ρ × Cp × ΔT × 1.4 / (24×3600) |
+| 內部負載 | Q_internal | avg_light + fan + avg_defrost（照明僅開門時耗電） |
+| 食品負荷 | Q_product | 約 Q_wall × 3%（呼吸熱） |
+| 安全餘裕 | Q_safety | Q_base × 15%（獨立顯示） |
+| **總計** | **Q_total** | **Q_base + Q_safety** |
 
 **輸出：**
 - 四項熱負荷分項數值（W）
