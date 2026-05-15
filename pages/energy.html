@@ -118,7 +118,7 @@
       </div>
       <div class="input-group">
         <label>目前隔熱厚度 (mm)</label>
-        <input type="number" id="vip_ins" value="50" step="1">
+        <span id="vip_ins_disp" class="value-display">-</span>
       </div>
     </div>
     <div id="vip_result" style="display:none;">
@@ -234,7 +234,7 @@ function calcEnergy() {
 
   // VIP 分析
   const vip_U = parseFloat(document.getElementById('vip_U').value) || 0.35;
-  const vip_ins = parseFloat(document.getElementById('vip_ins').value) || 50;
+  const vip_ins = parseFloat(s.R?.ins_mm) || parseFloat(s.F?.ins_mm) || 50;
   const vip_analysis = RefrigCalc.calcVIPBenefit(vip_ins, vip_U, 0.021);
   document.getElementById('vip_result').style.display = 'block';
   document.getElementById('r_vip_save').textContent = vip_analysis.saving_mm + ' mm';
@@ -272,7 +272,7 @@ function calcEnergy() {
     },
     // VIP 分析
     VIP: {
-      current_U: vip_U, current_ins_mm: vip_ins,
+      current_U: parseFloat(s.wall_R?.U_wall), current_ins_mm: ins_mm,
       saving_mm: vip_analysis.saving_mm, saving_pct: vip_analysis.saving_pct,
       PU_needed_mm: vip_analysis.PU_needed_mm, VIP_needed_mm: vip_analysis.VIP_needed_mm,
     },
@@ -294,6 +294,12 @@ function refreshEnergyPage() {
   }
   if (s.wall_R?.U_wall) {
     document.getElementById('vip_U').value = s.wall_R.U_wall;
+  }
+  // VIP 隔熱厚度直接綁定 R.ins_mm（或 F.ins_mm）
+  const ins_mm = parseFloat(s.R?.ins_mm) || parseFloat(s.F?.ins_mm);
+  if (ins_mm) {
+    const el = document.getElementById('vip_ins_disp');
+    if (el) el.textContent = ins_mm + ' mm';
   }
   if (getCompressorEnergyParams(s)) calcEnergy();
 }
