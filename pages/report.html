@@ -186,7 +186,7 @@ function generateReport() {
     setText('r_AE', '- kWh/年');
   }
 
-  // Step 4
+  // Step 4（若未進入 energy 頁計算，則由 compressor 資料即時推算）
   if (s.energy) {
     setText('r_AE_final', s.energy.AE_kWh_year != null ? s.energy.AE_kWh_year + ' kWh/年' : '- kWh/年');
     setText('r_Erp', s.energy.EEI != null ? `EEI ${s.energy.EEI}` : '-');
@@ -198,6 +198,28 @@ function generateReport() {
       setText('r_MEPS', '-');
     }
     setText('r_per_L', s.energy.per_L != null ? s.energy.per_L + ' kWh/L/年' : '- kWh/L/年');
+  } else if (s.compressor) {
+    // 由 Step 3 資料即時計算能耗（若尚未進入 energy 頁）
+    const c = s.compressor;
+    const P_in = parseFloat(c.P_input_W);
+    const rf = c.runtime_factor ?? ((s.F?.Ti != null && s.F.Ti < 0) ? 0.55 : 0.40);
+    if (Number.isFinite(P_in) && P_in > 0) {
+      const AE_kWh = Math.round((P_in / 1000) * 24 * 365 * rf);
+      const V_total = (parseFloat(s.vol?.V_R) || 0) + (parseFloat(s.vol?.V_F) || 0);
+      const AE_std = 124 + 0.233 * V_total;
+      const EEI = Math.round((AE_kWh / AE_std) * 100);
+      const erpGrade = EEI < 30 ? 'A' : EEI < 42 ? 'B' : EEI < 55 ? 'C' : EEI < 80 ? 'D' : EEI < 95 ? 'E' : EEI < 110 ? 'F' : 'G';
+      const per_L = V_total > 0 ? (AE_kWh / V_total).toFixed(2) : '-';
+      setText('r_AE_final', AE_kWh + ' kWh/年');
+      setText('r_Erp', `EEI ${EEI}（${erpGrade} 級）`);
+      setText('r_MEPS', '（請至 Step 4 查看台灣能效）');
+      setText('r_per_L', per_L !== '-' ? per_L + ' kWh/L/年' : '- kWh/L/年');
+    } else {
+      setText('r_AE_final', '- kWh/年');
+      setText('r_Erp', '-');
+      setText('r_MEPS', '-');
+      setText('r_per_L', '- kWh/L/年');
+    }
   } else {
     setText('r_AE_final', '- kWh/年');
     setText('r_Erp', '-');
