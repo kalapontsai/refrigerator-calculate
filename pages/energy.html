@@ -29,19 +29,19 @@
 
   <div class="section">
     <div class="section-title">年耗電量估算</div>
-    <div class="input-row">
-      <div class="input-group">
-        <label>輸入功率 (W)</label>
-        <input type="number" id="P_input_W" value="0" step="1" min="10" max="1000">
+    <div class="result-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px;">
+      <div class="result-item">
+        <div class="label">輸入功率 P<sub>in</sub>（Step 3）</div>
+        <div class="value" id="disp_P_input">- W</div>
       </div>
-      <div class="input-group">
-        <label>運行係數 (RF)</label>
-        <input type="number" id="runtime_factor" value="0.40" step="0.05" min="0.1" max="0.9">
+      <div class="result-item">
+        <div class="label">運轉係數 RF（Step 3）</div>
+        <div class="value" id="disp_runtime">-</div>
       </div>
     </div>
     <div class="info-box">
       年耗電 = (P<sub>in</sub> / 1000) × 24h × 365天 × RF<br>
-      RF：冷藏室約 0.30~0.45，風扇式變頻冰箱偏低
+      數值自動取自 Step 3 壓縮機選型結果，無需手動輸入
     </div>
   </div>
 
@@ -167,10 +167,41 @@ function updateErPGrade(ei) {
 
 function getSavedData() { return JSON.parse(localStorage.getItem('refrig_calc') || '{}'); }
 
+/** 從 Step 3 壓縮機選型讀取 P_in 與運轉係數 */
+function getCompressorEnergyParams(s) {
+  const c = s.compressor;
+  if (!c?.P_input_W) return null;
+  const P_input_W = parseFloat(c.P_input_W);
+  const runtime_factor = c.runtime_factor != null
+    ? parseFloat(c.runtime_factor)
+    : RefrigCalc.getRuntimeFactor(s.F?.Ti);
+  if (!Number.isFinite(P_input_W) || P_input_W <= 0) return null;
+  return { P_input_W, runtime_factor };
+}
+
+function syncFromCompressor() {
+  const s = getSavedData();
+  const params = getCompressorEnergyParams(s);
+  const pEl = document.getElementById('disp_P_input');
+  const rEl = document.getElementById('disp_runtime');
+  if (!params) {
+    if (pEl) pEl.textContent = '（請先完成 Step 3）';
+    if (rEl) rEl.textContent = '-';
+    return null;
+  }
+  if (pEl) pEl.textContent = params.P_input_W + ' W';
+  if (rEl) rEl.textContent = String(params.runtime_factor);
+  return params;
+}
+
 function calcEnergy() {
   const s = getSavedData();
-  const P_input_W = parseFloat(document.getElementById('P_input_W').value) || 0;
-  const runtime_factor = parseFloat(document.getElementById('runtime_factor').value) || 0.40;
+  const params = syncFromCompressor();
+  if (!params) {
+    alert('請先完成 Step 3 壓縮機選型');
+    return;
+  }
+  const { P_input_W, runtime_factor } = params;
   const AE_kWh_year = (P_input_W / 1000) * 24 * 365 * runtime_factor;
 
   document.getElementById('disp_AE').textContent = Math.round(AE_kWh_year) + ' kWh/年';
@@ -255,12 +286,8 @@ function calcEnergy() {
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 
-window.addEventListener('load', () => {
+function refreshEnergyPage() {
   const s = getSavedData();
-  // 自動填入來自 Step 1-3 的資料
-  if (s.compressor?.P_input_W) {
-    document.getElementById('P_input_W').value = s.compressor.P_input_W;
-  }
   if (s.vol?.V_R) {
     document.getElementById('tw_V_R').value = Math.round(parseFloat(s.vol.V_R));
     document.getElementById('tw_V_F').value = Math.round(parseFloat(s.vol.V_F));
@@ -268,7 +295,14 @@ window.addEventListener('load', () => {
   if (s.wall_R?.U_wall) {
     document.getElementById('vip_U').value = s.wall_R.U_wall;
   }
-  calcEnergy();
+  if (getCompressorEnergyParams(s)) calcEnergy();
+}
+
+window.refreshEnergyPage = refreshEnergyPage;
+
+window.addEventListener('load', refreshEnergyPage);
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'refreshEnergy') refreshEnergyPage();
 });
 
 

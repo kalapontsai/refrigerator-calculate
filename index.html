@@ -49,6 +49,18 @@ function showSheet(name) {
 
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.querySelector(`nav button[data-page="${name}"]`).classList.add('active');
+
+  if (!target?.contentWindow) return;
+  const win = target.contentWindow;
+
+  // iframe 僅初次 load；切換分頁時需重新同步 localStorage 資料
+  if (name === 'report') {
+    if (typeof win.generateReport === 'function') win.generateReport();
+    else win.postMessage({ type: 'refreshReport' }, '*');
+  } else if (name === 'energy') {
+    if (typeof win.refreshEnergyPage === 'function') win.refreshEnergyPage();
+    else win.postMessage({ type: 'refreshEnergy' }, '*');
+  }
 }
 
 // 讓子頁面可以呼叫 parent.showSheet

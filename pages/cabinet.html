@@ -103,20 +103,6 @@
           <label>風扇功率 (W)</label>
           <input type="number" id="R_fan_W" value="5" step="1" min="0" max="30">
         </div>
-        <div class="input-group">
-          <label>除霜峰值 (W)</label>
-          <input type="number" id="R_defrost_W" value="150" step="10" min="0" max="500">
-        </div>
-      </div>
-      <div class="input-row">
-        <div class="input-group">
-          <label>每日除霜次數</label>
-          <input type="number" id="R_defrost_times" value="2" step="1" min="0" max="10">
-        </div>
-        <div class="input-group">
-          <label>每次除霜時間 (min)</label>
-          <input type="number" id="R_defrost_min" value="20" step="1" min="0" max="60">
-        </div>
       </div>
       <div class="input-group">
         <label>門面積比例</label>
@@ -190,6 +176,20 @@
         <div class="input-group">
           <label>風扇功率 (W)</label>
           <input type="number" id="F_fan_W" value="2" step="1" min="0" max="20">
+        </div>
+        <div class="input-group">
+          <label>除霜峰值 (W)</label>
+          <input type="number" id="F_defrost_W" value="150" step="10" min="0" max="500">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>每日除霜次數</label>
+          <input type="number" id="F_defrost_times" value="2" step="1" min="0" max="10">
+        </div>
+        <div class="input-group">
+          <label>每次除霜時間 (min)</label>
+          <input type="number" id="F_defrost_min" value="20" step="1" min="0" max="60">
         </div>
       </div>
       <div class="input-group">
@@ -313,9 +313,6 @@ function calcAll() {
   const R_open_min = (() => { const v = parseFloat(document.getElementById('R_open_min').value); return isNaN(v) ? 0.5 : v; })();
   const R_light_W = parseFloat(document.getElementById('R_light_W').value) || 5;
   const R_fan_W = parseFloat(document.getElementById('R_fan_W').value) || 5;
-  const R_defrost_W = parseFloat(document.getElementById('R_defrost_W').value) || 150;
-  const R_defrost_times = parseFloat(document.getElementById('R_defrost_times').value) || 2;
-  const R_defrost_min = parseFloat(document.getElementById('R_defrost_min').value) || 20;
   const R_door_ratio = parseFloat(document.getElementById('R_door_ratio').value) || 0.7;
 
   // 冷凍室參數
@@ -327,6 +324,9 @@ function calcAll() {
   const F_open_min = (() => { const v = parseFloat(document.getElementById('F_open_min').value); return isNaN(v) ? 0.3 : v; })();
   const F_light_W = parseFloat(document.getElementById('F_light_W').value) || 0;
   const F_fan_W = parseFloat(document.getElementById('F_fan_W').value) || 2;
+  const F_defrost_W = parseFloat(document.getElementById('F_defrost_W').value) || 150;
+  const F_defrost_times = parseFloat(document.getElementById('F_defrost_times').value) || 2;
+  const F_defrost_min = parseFloat(document.getElementById('F_defrost_min').value) || 20;
   const F_door_ratio = parseFloat(document.getElementById('F_door_ratio').value) || 0.7;
 
   // 內部高度分配：冷藏室 = 用戶指定的%高度，機構空間 12%（固定），其餘為冷凍室
@@ -383,7 +383,6 @@ function calcAll() {
       Ti: R_Ti, ins_mm: R_ins_mm, ins_type: R_ins_type,
       open_times: R_open_times, open_min: R_open_min,
       light_W: R_light_W, fan_W: R_fan_W,
-      defrost_W: R_defrost_W, defrost_times: R_defrost_times, defrost_min: R_defrost_min,
       door_ratio: R_door_ratio,
     },
     // === 冷凍室參數 ===
@@ -391,6 +390,7 @@ function calcAll() {
       Ti: F_Ti, ins_mm: F_ins_mm, ins_type: F_ins_type,
       open_times: F_open_times, open_min: F_open_min,
       light_W: F_light_W, fan_W: F_fan_W,
+      defrost_W: F_defrost_W, defrost_times: F_defrost_times, defrost_min: F_defrost_min,
       door_ratio: F_door_ratio,
     },
     // === 容積與幾何 ===
@@ -422,11 +422,11 @@ function resetDefaults() {
     ['T_o','30'],['RH','70'],
     ['R_Ti','5'],['R_ins_mm','45'],['R_ins_type','PU foam (cyclopentane)'],
     ['R_open_times','20'],['R_open_min','0.5'],
-    ['R_light_W','5'],['R_fan_W','5'],['R_defrost_W','150'],
-    ['R_defrost_times','2'],['R_defrost_min','20'],['R_door_ratio','0.7'],
+    ['R_light_W','5'],['R_fan_W','5'],['R_door_ratio','0.7'],
     ['F_Ti','-18'],['F_ins_mm','60'],['F_ins_type','PU foam (cyclopentane)'],
     ['F_open_times','5'],['F_open_min','0.3'],
-    ['F_light_W','0'],['F_fan_W','2'],['F_door_ratio','0.7'],
+    ['F_light_W','0'],['F_fan_W','2'],['F_defrost_W','150'],
+    ['F_defrost_times','2'],['F_defrost_min','20'],['F_door_ratio','0.7'],
     ['R_height_pct','62'],
   ];
   defaults.forEach(([id, val]) => {
@@ -440,15 +440,25 @@ window.addEventListener('load', () => {
   const saved = JSON.parse(localStorage.getItem('refrig_calc') || '{}');
   if (saved.width_mm) {
     ['width_mm','depth_mm','height_mm','T_o','RH','R_Ti','R_ins_mm',
-     'R_open_times','R_open_min','R_light_W','R_fan_W','R_defrost_W',
-     'R_defrost_times','R_defrost_min','R_door_ratio',
+     'R_open_times','R_open_min','R_light_W','R_fan_W','R_door_ratio',
      'F_Ti','F_ins_mm','F_open_times','F_open_min',
-     'F_light_W','F_fan_W','F_door_ratio','R_height_pct'].forEach(id => {
+     'F_light_W','F_fan_W','F_defrost_W','F_defrost_times','F_defrost_min',
+     'F_door_ratio','R_height_pct'].forEach(id => {
       const el = document.getElementById(id);
       if (el && saved[id] !== undefined) el.value = saved[id];
     });
     if (saved.R?.ins_type) document.getElementById('R_ins_type').value = saved.R.ins_type;
     if (saved.F?.ins_type) document.getElementById('F_ins_type').value = saved.F.ins_type;
+    const defrostSrc = saved.F?.defrost_W != null ? saved.F : saved.R;
+    if (defrostSrc) {
+      const map = [
+        ['F_defrost_W', 'defrost_W'], ['F_defrost_times', 'defrost_times'], ['F_defrost_min', 'defrost_min'],
+      ];
+      map.forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el && defrostSrc[key] != null) el.value = defrostSrc[key];
+      });
+    }
     calcAll();
   } else {
     calcAll();

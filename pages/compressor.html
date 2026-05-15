@@ -84,7 +84,8 @@
 
     <div class="comp-result">
       <h3>輸入功率與能耗</h3>
-      <div class="result-row"><span class="key">系統總制冷負荷</span><span class="val" id="disp_Q_total">- W</span></div>
+      <div class="result-row"><span class="key">系統總熱負載 Q<sub>total</sub></span><span class="val" id="disp_Q_total">- W</span></div>
+      <div class="result-row"><span class="key">壓縮機額定制冷量 Q<sub>cooling</sub></span><span class="val" id="disp_Q_cooling">- W</span></div>
       <div class="result-row"><span class="key">壓縮機輸入功率</span><span class="val" id="disp_P_in">- W</span></div>
       <div class="result-row"><span class="key">運轉係數（Runtime Factor）</span><span class="val" id="disp_runtime">-</span></div>
       <div class="result-row"><span class="key">估計年耗電</span><span class="val" id="disp_AE">- kWh/年</span></div>
@@ -133,8 +134,10 @@ function calcCompressor() {
   const T_evap = parseFloat(document.getElementById('T_evap').value) || -10;
   const ref = document.getElementById('refrigerant').value;
   const Q_total = parseFloat(s.Q.Q_total);
+  const runtime_factor = RefrigCalc.getRuntimeFactor(s.F?.Ti);
+  const Q_cooling_W = RefrigCalc.calcRatedCoolingCapacity(Q_total, runtime_factor);
 
-  const result = RefrigCalc.calcCompressorSpecV2(Q_total, T_evap, T_cond, ref);
+  const result = RefrigCalc.calcCompressorSpecV2(Q_cooling_W, T_evap, T_cond, ref);
 
   // COP 卡諾
   const T_evap_K = T_evap + 273.15;
@@ -152,12 +155,12 @@ function calcCompressor() {
   document.getElementById('disp_HP').textContent = result.P_HP + ' HP';
   document.getElementById('disp_kW').textContent = result.P_kW + ' kW';
   document.getElementById('disp_Q_total').textContent = Q_total.toFixed(1) + ' W';
+  document.getElementById('disp_Q_cooling').textContent = result.Q_cooling_W + ' W';
   document.getElementById('disp_P_in').textContent = result.P_input_W + ' W';
 
   // 年耗電
-  const runtime = s.F?.Ti && s.F.Ti < 0 ? 0.55 : 0.40;
-  const AE = (parseFloat(result.P_input_W) / 1000) * 24 * 365 * runtime;
-  document.getElementById('disp_runtime').textContent = runtime;
+  const AE = (parseFloat(result.P_input_W) / 1000) * 24 * 365 * runtime_factor;
+  document.getElementById('disp_runtime').textContent = runtime_factor;
   document.getElementById('disp_AE').textContent = Math.round(AE) + ' kWh/年';
 
   // 冷媒顯示
@@ -168,7 +171,12 @@ function calcCompressor() {
   document.getElementById('disp_comp_type').textContent = result.compressorDesc;
 
   // 儲存（注意：報告頁讀取 T_cond_C / T_evap_C）
-  s.compressor = { T_cond_C: T_cond, T_evap_C: T_evap, refrigerant: ref, ...result };
+  s.compressor = {
+    T_cond_C: T_cond, T_evap_C: T_evap, refrigerant: ref,
+    Q_total_W: parseFloat(Q_total.toFixed(2)),
+    runtime_factor,
+    ...result,
+  };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 

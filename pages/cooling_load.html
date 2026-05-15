@@ -50,7 +50,7 @@
     <table class="breakdown-table">
       <tr><td>箱壁傳導</td><td id="b_R_wall">- W</td></tr>
       <tr><td>開門侵入</td><td id="b_R_door">- W</td></tr>
-      <tr><td>內部熱源（照明+風扇+除霜）</td><td id="b_R_internal">- W</td></tr>
+      <tr><td>內部熱源（照明+風扇）</td><td id="b_R_internal">- W</td></tr>
       <tr><td>食品熱負荷</td><td id="b_R_product">- W</td></tr>
       <tr><td>安全係數 (×1.15)</td><td id="b_R_safety">- W</td></tr>
       <tr class="total-row"><td>冷藏室總計</td><td id="b_R_total">- W</td></tr>
@@ -63,7 +63,7 @@
     <table class="breakdown-table">
       <tr><td>箱壁傳導</td><td id="b_F_wall">- W</td></tr>
       <tr><td>開門侵入</td><td id="b_F_door">- W</td></tr>
-      <tr><td>內部熱源（照明+風扇）</td><td id="b_F_internal">- W</td></tr>
+      <tr><td>內部熱源（照明+風扇+除霜）</td><td id="b_F_internal">- W</td></tr>
       <tr><td>食品熱負荷</td><td id="b_F_product">- W</td></tr>
       <tr><td>安全係數 (×1.15)</td><td id="b_F_safety">- W</td></tr>
       <tr class="total-row"><td>冷凍室總計</td><td id="b_F_total">- W</td></tr>
@@ -99,7 +99,8 @@
       <span style="font-size:0.85em;color:#555;">&nbsp;&nbsp;（照明僅開門時耗電：avg_light = light_W × (open_times×open_min/60) / 24）</span><br>
       <b>基礎負荷：</b>Q<sub>base</sub> = Q<sub>wall</sub> + Q<sub>door</sub> + Q<sub>internal</sub> + Q<sub>product</sub><br>
       <b>安全餘裕：</b>Q<sub>safety</sub> = Q<sub>base</sub> × 15%<br>
-      <b>最終總負荷：</b>Q<sub>total</sub> = Q<sub>base</sub> + Q<sub>safety</sub>
+      <b>最終總負荷：</b>Q<sub>total</sub> = Q<sub>base</sub> + Q<sub>safety</sub><br>
+      <span style="font-size:0.85em;color:#555;">&nbsp;&nbsp;（穩態無開門：open_times=0 時 Q<sub>product</sub>=0，無新鮮食品負載）</span>
     </div>
   </div>
 
@@ -118,6 +119,16 @@ function getSavedData() {
   return JSON.parse(localStorage.getItem('refrig_calc') || '{}');
 }
 
+/** 除霜參數在 F；舊版 R 內欄位遷移 */
+function getDefrostParams(chamber, legacyChamber) {
+  const src = chamber?.defrost_W != null ? chamber : legacyChamber;
+  return {
+    defrost_W: src?.defrost_W ?? 150,
+    defrost_times: src?.defrost_times ?? 2,
+    defrost_min: src?.defrost_min ?? 20,
+  };
+}
+
 function getRefrigParams() {
   const s = getSavedData();
   if (!s.R) return null;
@@ -131,6 +142,7 @@ function getRefrigParams() {
 
   const R_lambda = RefrigCalc.INSULATION_TYPES[s.R.ins_type]?.lambda || 0.021;
   const F_lambda = RefrigCalc.INSULATION_TYPES[s.F.ins_type]?.lambda || 0.021;
+  const F_defrost = getDefrostParams(s.F, s.R);
 
   return {
     W, D, H, H_R, H_F, T_o,
@@ -144,9 +156,6 @@ function getRefrigParams() {
       open_min: s.R.open_min,
       light_W: s.R.light_W,
       fan_W: s.R.fan_W,
-      defrost_W: s.R.defrost_W || 0,
-      defrost_times: s.R.defrost_times || 0,
-      defrost_min: s.R.defrost_min || 0,
       door_ratio: s.R.door_ratio,
     },
     F: {
@@ -158,6 +167,9 @@ function getRefrigParams() {
       open_min: s.F.open_min,
       light_W: s.F.light_W || 0,
       fan_W: s.F.fan_W || 2,
+      defrost_W: F_defrost.defrost_W,
+      defrost_times: F_defrost.defrost_times,
+      defrost_min: F_defrost.defrost_min,
       door_ratio: s.F.door_ratio,
     },
   };
@@ -178,8 +190,8 @@ function calcCoolingLoad() {
   // Task 2: 使用修正公式 f=0.5（冷藏室換氣係數）
   const R_door = RefrigCalc.calcDoorLoad(R_vol_L * 1000, p.R.Ti, T_o, p.R.open_times, p.R.open_min, 0.5);
   // Task 3: 照明僅開門時耗電，傳入 open_times 與 open_min
-  const R_internal = RefrigCalc.calcInternalLoad(p.R.light_W, p.R.fan_W, p.R.defrost_W, p.R.defrost_times, p.R.defrost_min, p.R.open_times, p.R.open_min);
-  const R_total = RefrigCalc.calcCompartmentTotalLoad(R_wall, R_door, R_internal, 1.15);
+  const R_internal = RefrigCalc.calcInternalLoad(p.R.light_W, p.R.fan_W, 0, 0, 0, p.R.open_times, p.R.open_min);
+  const R_total = RefrigCalc.calcCompartmentTotalLoad(R_wall, R_door, R_internal, 1.15, p.R.open_times);
 
   // 冷凍室負荷
   const F_wall = RefrigCalc.calcCompartmentWallLoad(p.F.dims, p.F.ins_mm, p.F.lambda, p.F.Ti, T_o, p.F.door_ratio);
@@ -187,8 +199,12 @@ function calcCoolingLoad() {
   // Task 2: 使用修正公式 f=0.3（冷凍室換氣係數）
   const F_door = RefrigCalc.calcDoorLoad(F_vol_L * 1000, p.F.Ti, T_o, p.F.open_times, p.F.open_min, 0.3);
   // Task 3: 照明僅開門時耗電，傳入 open_times 與 open_min
-  const F_internal = RefrigCalc.calcInternalLoad(p.F.light_W, p.F.fan_W || 0, 0, 0, 0, p.F.open_times || 0, p.F.open_min || 0);
-  const F_total = RefrigCalc.calcCompartmentTotalLoad(F_wall, F_door, F_internal, 1.15);
+  const F_internal = RefrigCalc.calcInternalLoad(
+    p.F.light_W, p.F.fan_W || 0,
+    p.F.defrost_W, p.F.defrost_times, p.F.defrost_min,
+    p.F.open_times || 0, p.F.open_min || 0
+  );
+  const F_total = RefrigCalc.calcCompartmentTotalLoad(F_wall, F_door, F_internal, 1.15, p.F.open_times);
 
   // 總負荷
   const Q_total = R_total.Q_total_W + F_total.Q_total_W;
@@ -196,7 +212,6 @@ function calcCoolingLoad() {
   // 更新 DOM - R
   document.getElementById('b_R_wall').textContent = R_wall.Q_W + ' W';
   document.getElementById('b_R_door').textContent = R_door.Q_W + ' W';
-  // Task 3: 照明僅開門時耗電，除霜依實際次數分攤
   document.getElementById('b_R_internal').textContent = R_internal.Q_W.toFixed(1) + ' W';
   document.getElementById('b_R_product').textContent = R_total.Q_product_W + ' W';
   // Task 4: 安全餘裕獨立顯示（使用 calcCompartmentTotalLoad 回傳的 Q_safety_margin_W）
@@ -241,8 +256,29 @@ function calcCoolingLoad() {
   s.door_R = { Q_W: R_door.Q_W, Q_kcalh: R_door.Q_kcalh, airExchanged_m3_day: R_door.airExchanged_m3_day, f: R_door.f, latent_factor: R_door.latent_factor };
   s.door_F = { Q_W: F_door.Q_W, Q_kcalh: F_door.Q_kcalh, airExchanged_m3_day: F_door.airExchanged_m3_day, f: F_door.f, latent_factor: F_door.latent_factor };
   // 內部熱源詳細
-  s.internal_R = { light_W: R_internal.breakdown.light_W, avg_light_W: R_internal.breakdown.avg_light_W, fan_W: R_internal.breakdown.fan_W, avg_defrost_W: R_internal.breakdown.avg_defrost_W, daily_light_hours: R_internal.breakdown.daily_light_hours };
-  s.internal_F = { fan_W: F_internal.breakdown.fan_W };
+  s.internal_R = {
+    light_W: R_internal.breakdown.light_W,
+    avg_light_W: R_internal.breakdown.avg_light_W,
+    fan_W: R_internal.breakdown.fan_W,
+    daily_light_hours: R_internal.breakdown.daily_light_hours,
+  };
+  s.internal_F = {
+    light_W: F_internal.breakdown.light_W,
+    avg_light_W: F_internal.breakdown.avg_light_W,
+    fan_W: F_internal.breakdown.fan_W,
+    avg_defrost_W: F_internal.breakdown.avg_defrost_W,
+    daily_light_hours: F_internal.breakdown.daily_light_hours,
+  };
+  if (s.R) {
+    delete s.R.defrost_W;
+    delete s.R.defrost_times;
+    delete s.R.defrost_min;
+  }
+  if (s.F) {
+    s.F.defrost_W = p.F.defrost_W;
+    s.F.defrost_times = p.F.defrost_times;
+    s.F.defrost_min = p.F.defrost_min;
+  }
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 

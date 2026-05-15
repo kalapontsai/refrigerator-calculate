@@ -81,6 +81,9 @@
     <table class="data-table">
       <tr><td>冷凝 / 蒸發溫度</td><td id="r_Temps">- °C / - °C</td></tr>
       <tr><td>冷媒</td><td id="r_refrig">-</td></tr>
+      <tr><td>系統總熱負載</td><td id="r_Q_heat">- W</td></tr>
+      <tr><td>壓縮機額定制冷量</td><td id="r_Q_cooling">- W</td></tr>
+      <tr><td>運轉係數</td><td id="r_runtime">-</td></tr>
       <tr><td>建議功率</td><td id="r_HP">- HP</td></tr>
       <tr><td>輸入功率</td><td id="r_P_in">- W</td></tr>
       <tr><td>COP（實際）</td><td id="r_COP">-</td></tr>
@@ -110,72 +113,100 @@
 
 <script src="../js/calculator.js"></script>
 <script>
-document.getElementById('gen_time').textContent = new Date().toLocaleString('zh-TW');
-
 function getSavedData() { return JSON.parse(localStorage.getItem('refrig_calc') || '{}'); }
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function fmtW(val) {
+  if (val == null || val === '' || Number.isNaN(Number(val))) return '- W';
+  const n = Number(val);
+  return (Number.isInteger(n) ? n : n.toFixed(1)) + ' W';
+}
 
 function generateReport() {
   const s = getSavedData();
+  setText('gen_time', new Date().toLocaleString('zh-TW'));
 
   // Step 1
   const V_R = parseFloat(s.vol?.V_R) || 0;
   const V_F = parseFloat(s.vol?.V_F) || 0;
-  document.getElementById('r_dims').textContent =
-    `${s.width_mm} × ${s.depth_mm} × ${s.height_mm} mm`;
-  document.getElementById('r_V_R').textContent = V_R + ' L';
-  document.getElementById('r_V_F').textContent = V_F + ' L';
-  document.getElementById('r_V_total').textContent = (V_R + V_F).toFixed(0) + ' L';
-  document.getElementById('r_V_eq').textContent = (V_R + 1.78 * V_F).toFixed(0) + ' L';
-  document.getElementById('r_R_ins').textContent =
-    `${s.R?.ins_mm} mm / ${s.R?.ins_type || '-'}`;
-  document.getElementById('r_F_ins').textContent =
-    `${s.F?.ins_mm} mm / ${s.F?.ins_type || '-'}`;
-  document.getElementById('r_R_U').textContent = (s.wall_R?.U_wall || '-') + ' W/(m²·K)';
-  document.getElementById('r_F_U').textContent = (s.wall_F?.U_wall || '-') + ' W/(m²·K)';
+  const hasDims = s.width_mm && s.depth_mm && s.height_mm;
+  setText('r_dims', hasDims ? `${s.width_mm} × ${s.depth_mm} × ${s.height_mm} mm` : '- mm');
+  setText('r_V_R', V_R ? V_R + ' L' : '- L');
+  setText('r_V_F', V_F ? V_F + ' L' : '- L');
+  setText('r_V_total', (V_R + V_F) ? (V_R + V_F).toFixed(0) + ' L' : '- L');
+  setText('r_V_eq', (V_R + V_F) ? (V_R + 1.78 * V_F).toFixed(0) + ' L' : '- L');
+  setText('r_R_ins', s.R?.ins_mm != null ? `${s.R.ins_mm} mm / ${s.R.ins_type || '-'}` : '- mm / -');
+  setText('r_F_ins', s.F?.ins_mm != null ? `${s.F.ins_mm} mm / ${s.F.ins_type || '-'}` : '- mm / -');
+  setText('r_R_U', s.wall_R?.U_wall != null ? s.wall_R.U_wall + ' W/(m²·K)' : '- W/(m²·K)');
+  setText('r_F_U', s.wall_F?.U_wall != null ? s.wall_F.U_wall + ' W/(m²·K)' : '- W/(m²·K)');
 
   // Step 2 - detailed breakdown
   const r_R = s.Q_R_detail || {};
   const r_F = s.Q_F_detail || {};
-  document.getElementById('r_R_wall').textContent = (r_R.wall || '-') + ' W';
-  document.getElementById('r_R_door').textContent = (r_R.door || '-') + ' W';
-  document.getElementById('r_R_internal').textContent = (r_R.internal || '-') + ' W';
-  document.getElementById('r_R_product').textContent = (r_R.product || '-') + ' W';
-  document.getElementById('r_R_total').textContent = (s.Q?.Q_R || '-') + ' W';
-  document.getElementById('r_F_wall').textContent = (r_F.wall || '-') + ' W';
-  document.getElementById('r_F_door').textContent = (r_F.door || '-') + ' W';
-  document.getElementById('r_F_internal').textContent = (r_F.internal || '-') + ' W';
-  document.getElementById('r_F_product').textContent = (r_F.product || '-') + ' W';
-  document.getElementById('r_F_total').textContent = (s.Q?.Q_F || '-') + ' W';
-  document.getElementById('r_Q_total').textContent = (s.Q?.Q_total || '-') + ' W';
+  setText('r_R_wall', fmtW(r_R.wall));
+  setText('r_R_door', fmtW(r_R.door));
+  setText('r_R_internal', fmtW(r_R.internal));
+  setText('r_R_product', fmtW(r_R.product));
+  setText('r_R_total', fmtW(s.Q?.Q_R));
+  setText('r_F_wall', fmtW(r_F.wall));
+  setText('r_F_door', fmtW(r_F.door));
+  setText('r_F_internal', fmtW(r_F.internal));
+  setText('r_F_product', fmtW(r_F.product));
+  setText('r_F_total', fmtW(s.Q?.Q_F));
+  setText('r_Q_total', fmtW(s.Q?.Q_total));
 
   // Step 3
   if (s.compressor) {
-    document.getElementById('r_Temps').textContent =
-      `${s.compressor.T_cond_C}°C / ${s.compressor.T_evap_C}°C`;
-    document.getElementById('r_refrig').textContent =
-      `${s.compressor.refrigerant}（GWP=${s.compressor.refGWP}）`;
-    document.getElementById('r_HP').textContent = s.compressor.P_HP + ' HP';
-    document.getElementById('r_P_in').textContent = s.compressor.P_input_W + ' W';
-    document.getElementById('r_COP').textContent = s.compressor.COP_actual;
-    const runtime = (s.F?.Ti && s.F.Ti < 0) ? 0.55 : 0.40;
-    const AE_est = (parseFloat(s.compressor.P_input_W) / 1000) * 24 * 365 * runtime;
-    document.getElementById('r_AE').textContent = Math.round(AE_est) + ' kWh/年';
+    const c = s.compressor;
+    const runtime = c.runtime_factor ?? ((s.F?.Ti != null && s.F.Ti < 0) ? 0.55 : 0.40);
+    const Q_heat = c.Q_total_W ?? s.Q?.Q_total;
+    setText('r_Temps', `${c.T_cond_C ?? '-'}°C / ${c.T_evap_C ?? '-'}°C`);
+    setText('r_refrig', `${c.refrigerant || '-'}（GWP=${c.refGWP ?? '-'}）`);
+    setText('r_Q_heat', fmtW(Q_heat));
+    setText('r_Q_cooling', fmtW(c.Q_cooling_W));
+    setText('r_runtime', runtime);
+    setText('r_HP', c.P_HP != null ? c.P_HP + ' HP' : '- HP');
+    setText('r_P_in', c.P_input_W != null ? c.P_input_W + ' W' : '- W');
+    setText('r_COP', c.COP_actual != null ? String(c.COP_actual) : '-');
+    const AE_est = (parseFloat(c.P_input_W) / 1000) * 24 * 365 * runtime;
+    setText('r_AE', Number.isFinite(AE_est) ? Math.round(AE_est) + ' kWh/年' : '- kWh/年');
+  } else {
+    setText('r_Temps', '- °C / - °C');
+    setText('r_refrig', '-');
+    setText('r_Q_heat', fmtW(s.Q?.Q_total));
+    setText('r_Q_cooling', '- W');
+    setText('r_runtime', '-');
+    setText('r_HP', '- HP');
+    setText('r_P_in', '- W');
+    setText('r_COP', '-');
+    setText('r_AE', '- kWh/年');
   }
 
   // Step 4
   if (s.energy) {
-    document.getElementById('r_AE_final').textContent = s.energy.AE_kWh_year + ' kWh/年';
-    document.getElementById('r_Erp').textContent = `EEI ${s.energy.EEI}`;
+    setText('r_AE_final', s.energy.AE_kWh_year != null ? s.energy.AE_kWh_year + ' kWh/年' : '- kWh/年');
+    setText('r_Erp', s.energy.EEI != null ? `EEI ${s.energy.EEI}` : '-');
     if (s.energy.MEPS) {
       const m = s.energy.MEPS;
       const passStr = m.pass ? '合格' : '不合格';
-      document.getElementById('r_MEPS').textContent = `E.F.=${m.EF_actual} / 基準=${m.EF_base}（${m.ratio_pct}%）→ ${passStr}`;
+      setText('r_MEPS', `E.F.=${m.EF_actual} / 基準=${m.EF_base}（${m.ratio_pct}%）→ ${passStr}`);
     } else {
-      document.getElementById('r_MEPS').textContent = '-';
+      setText('r_MEPS', '-');
     }
-    document.getElementById('r_per_L').textContent = s.energy.per_L + ' kWh/L/年';
+    setText('r_per_L', s.energy.per_L != null ? s.energy.per_L + ' kWh/L/年' : '- kWh/L/年');
+  } else {
+    setText('r_AE_final', '- kWh/年');
+    setText('r_Erp', '-');
+    setText('r_MEPS', '-');
+    setText('r_per_L', '- kWh/L/年');
   }
 }
+
+window.generateReport = generateReport;
 
 function exportJSON() {
   const s = getSavedData();
@@ -202,33 +233,26 @@ function importJSON(event) {
       localStorage.setItem('refrig_calc', JSON.stringify(data));
       // 步驟2：依序在各頁觸發重新計算（從 Step 1 開始，因為它是 source）
       // 每頁的 window.addEventListener('load') 會自動重新計算並寫入 localStorage
-      const pages = ['cabinet', 'cooling_load', 'compressor', 'energy', 'report'];
-      let idx = 0;
-      function nextPage() {
-        if (idx >= pages.length) {
-          alert('匯入成功！所有資料已重新計算。');
-          return;
-        }
-        // 使用 parent.goTo 導航（假設在 iframe 內）
-        if (parent.goTo) { parent.goTo(pages[idx]); }
-        else if (window.location.pathname.endsWith('report.html')) {
-          // 直接更換 parent location（萬一 report 是頂層）
-          const base = window.location.pathname.replace(/[^/]*$/,'');
-          window.parent.location.href = base + pages[idx] + '.html';
-        }
-        idx++;
-        // 延遲確保頁面載入完成再換下一頁
-        setTimeout(nextPage, 800);
-      }
-      nextPage();
+      generateReport();
+      alert('匯入成功！報告已更新。若需重算各步驟，請依序開啟 Step 1～4。');
     } catch(err) {
       alert('匯入失敗：' + err.message);
     }
+    event.target.value = '';
   };
   reader.readAsText(file);
 }
 
 window.addEventListener('load', generateReport);
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'refreshReport') generateReport();
+});
+window.addEventListener('storage', (e) => {
+  if (e.key === 'refrig_calc') generateReport();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') generateReport();
+});
 </script>
 </body>
 </html>

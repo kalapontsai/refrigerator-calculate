@@ -243,11 +243,12 @@ function calcInternalLoad(light_W = 5, fan_W = 4, defrostPeak_W = 150,
  * @param doorLoad 開門負荷物件
  * @param internalLoad 內部熱源物件
  * @param safetyFactor 安全係數（預設 1.15，即 15%）
+ * @param open_times 每日開門次數；為 0 時視為穩態無開門測試，食品負載 = 0
  */
-function calcCompartmentTotalLoad(wallLoad, doorLoad, internalLoad, safetyFactor = 1.15) {
-  // 食品呼吸熱（冷藏室約3%，冷凍室約0.3%）
+function calcCompartmentTotalLoad(wallLoad, doorLoad, internalLoad, safetyFactor = 1.15, open_times = null) {
+  // 食品呼吸熱（冷藏室約3%，冷凍室約0.3%）；穩態無開門測試不計新鮮食品負載
   const productFactor = wallLoad.deltaT > 15 ? 0.03 : 0.003;
-  const Q_product = wallLoad.Q_W * productFactor;
+  const Q_product = open_times === 0 ? 0 : wallLoad.Q_W * productFactor;
 
   // 基礎總負荷（不含安全係數）
   const Q_base_total = wallLoad.Q_W + doorLoad.Q_W + internalLoad.Q_W + Q_product;
@@ -312,7 +313,23 @@ function calcCOP(T_evap_C, T_cond_C) {
   };
 }
 
+// ===== 運轉率與額定制冷量 =====
+/** 依主要艙室溫度取得運轉係數（冷凍主導 0.55，冷藏主導 0.40） */
+function getRuntimeFactor(T_i_F_C) {
+  return T_i_F_C != null && T_i_F_C < 0 ? 0.55 : 0.40;
+}
+
+/**
+ * 由穩態總熱負載反推壓縮機額定制冷能力
+ * Q_cooling = Q_total / runtime_factor（間歇運轉時額定能力須大於平均熱負載）
+ */
+function calcRatedCoolingCapacity(Q_total_W, runtime_factor = 0.55) {
+  const rf = runtime_factor > 0 ? runtime_factor : 0.55;
+  return parseFloat((Q_total_W / rf).toFixed(1));
+}
+
 // ===== 壓縮機選型（雙艙室）=====
+/** @param Q_cooling_W 壓縮機額定制冷能力 (W)，非穩態總熱負載 */
 function calcCompressorSpecV2(Q_cooling_W, T_evap_C, T_cond_C, refrigerant = 'R-600a') {
   const { COP_actual, deltaT } = calcCOP(T_evap_C, T_cond_C);
   const P_input_W = Q_cooling_W / COP_actual;
@@ -445,14 +462,13 @@ function getDefaultRefrigerator() {
     R: {
       Ti: 5, ins_mm: 45, ins_type: 'PU foam (cyclopentane)',
       open_times: 20, open_min: 0.5,
-      light_W: 5, fan_W: 5, defrost_W: 150, defrost_times: 2, defrost_min: 20,
+      light_W: 5, fan_W: 5,
     },
     // 冷凍室
     F: {
       Ti: -18, ins_mm: 60, ins_type: 'PU foam (cyclopentane)',
       open_times: 5, open_min: 0.3,
-      // 冷凍室無照明、無除霜
-      light_W: 0, fan_W: 2, defrost_W: 0, defrost_times: 0, defrost_min: 0,
+      light_W: 0, fan_W: 2, defrost_W: 150, defrost_times: 2, defrost_min: 20,
     },
   };
 }
@@ -469,6 +485,8 @@ window.RefrigCalc = {
   calcCompartmentTotalLoad,
   calcTotalCoolingLoadV2,
   calcCOP,
+  getRuntimeFactor,
+  calcRatedCoolingCapacity,
   calcCompressorSpecV2,
   calcEnergyRatingV2,
   calcTaiwanMEPSV2,

@@ -1,6 +1,5 @@
 # 冰箱制冷能力計算系統 - 完整公式總覽
-# 冰箱計算引擎 v2（雙艙室版）+ 四大欠缺模組
-# 適用型號：Sampo SR-C48DV (R=350L, F=125L) 開發驗證
+# 冰箱網頁版計算引擎 v2（雙艙室版）+ 四大欠缺模組
 
 ---
 
@@ -171,27 +170,6 @@ $$m_{test} = V_F \times \frac{3.5 \text{ kg}}{100 \text{ L}}$$
 | `generateSelfCheckSRC48DV` | - | SR-C48DV PR=38.4% 自檢 |
 | `generateSelfCheckPR70` | - | PR=70% 策略自檢 |
 | `generateSelfCheckColdAirCircuit` | - | 四大欠缺模組整合自檢 |
-
----
-
-## 九、SR-C48DV 參數對照
-
-| 參數 | 數值 | 備註 |
-|------|------|------|
-| $V_R$ | 350 L | 冷藏室 |
-| $V_F$ | 125 L | 冷凍室 |
-| K | 1.78 | 四星級 |
-| $V_{eq}$ | 572.5 L | 等效內容積 |
-| $E.F._{base}$ | 25.12 L/kWh/月 | 2027 一級門檻 |
-| $Q_L$（PR=38.4%） | 53.34 kcal/h | 總熱負荷 |
-| $Q_U$（PR=70%） | 76.2 kcal/h | 有效冷卻能力 |
-| G（PR=70%） | 1.323 kg/h | 質量流量 |
-| N（PR=70%） | 1973 RPM / 32.9 RPS | 變頻轉速 |
-| $\Delta H_{evap}$ | 57.59 kcal/kg | R600a 蒸發焓差 |
-| $\eta_v$ | 0.827 | 容積效率 |
-| $V_c$ | 10.0 cm³ | 排氣量（Panasonic TKF100E23）|
-| Test Load | 4.375 kg | IEC 測試負載 |
-| $\gamma$（T₂=-19°C）| 1.3533 kg/m³（公式）/ 1.359（參考）| 空氣密度 |
 
 ---
 
