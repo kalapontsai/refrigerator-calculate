@@ -223,11 +223,26 @@ function calcCoolingLoad() {
   // 繪製圖表
   renderChart(R_total, F_total);
 
-  // 儲存
+  // 儲存（包含所有計算結果）
   const s = getSavedData();
-  s.Q = { Q_R: R_total.Q_total_W, Q_F: F_total.Q_total_W, Q_total: Q_total };
-  s.Q_R_detail = { wall: R_wall.Q_W, door: R_door.Q_W, internal: R_internal.Q_W, product: R_total.Q_product_W };
-  s.Q_F_detail = { wall: F_wall.Q_W, door: F_door.Q_W, internal: F_internal.Q_W, product: F_total.Q_product_W };
+  s.Q = {
+    Q_R: R_total.Q_total_W, Q_F: F_total.Q_total_W, Q_total: Q_total,
+    safety_margin: { R_W: R_total.Q_safety_margin_W, F_W: F_total.Q_safety_margin_W },
+  };
+  s.Q_R_detail = {
+    wall: R_wall.Q_W, door: R_door.Q_W, internal: R_internal.Q_W, product: R_total.Q_product_W,
+    safety_margin: R_total.Q_safety_margin_W,
+  };
+  s.Q_F_detail = {
+    wall: F_wall.Q_W, door: F_door.Q_W, internal: F_internal.Q_W, product: F_total.Q_product_W,
+    safety_margin: F_total.Q_safety_margin_W,
+  };
+  // 開門負荷詳細
+  s.door_R = { Q_W: R_door.Q_W, Q_kcalh: R_door.Q_kcalh, airExchanged_m3_day: R_door.airExchanged_m3_day, f: R_door.f, latent_factor: R_door.latent_factor };
+  s.door_F = { Q_W: F_door.Q_W, Q_kcalh: F_door.Q_kcalh, airExchanged_m3_day: F_door.airExchanged_m3_day, f: F_door.f, latent_factor: F_door.latent_factor };
+  // 內部熱源詳細
+  s.internal_R = { light_W: R_internal.breakdown.light_W, avg_light_W: R_internal.breakdown.avg_light_W, fan_W: R_internal.breakdown.fan_W, avg_defrost_W: R_internal.breakdown.avg_defrost_W, daily_light_hours: R_internal.breakdown.daily_light_hours };
+  s.internal_F = { fan_W: F_internal.breakdown.fan_W };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }
 

@@ -219,9 +219,38 @@ function calcEnergy() {
   document.getElementById('r_inv_save').textContent = Math.round(inv_save * elec_price) + ' 元/年';
   document.getElementById('r_per_L').textContent = per_L.toFixed(2) + ' kWh/L/年';
 
-  // 儲存
-  s.energy = { AE_kWh_year: Math.round(AE_kWh_year), runtime_factor, per_L: per_L.toFixed(2), EEI: EEI.toFixed(0),
-    MEPS: { V_eq: tw.V_eq, EF_actual: tw.EF_actual, EF_base: tw.EF_base, ratio_pct: tw.ratio_pct, pass: tw.pass, V_R: tw_V_R, V_F: tw_V_F, star: tw_star, isFanCooled: tw_cool }
+  // 儲存（包含所有顯示值）
+  const erpGrade = ['A','B','C','D','E','F','G'][Math.min(6, Math.floor(EEI/15))];
+  s.energy = {
+    // 基本能耗
+    P_input_W, runtime_factor,
+    AE_kWh_year: Math.round(AE_kWh_year),
+    per_L: per_L.toFixed(2),
+    AE_std: Math.round(AE_std),
+    // EU ErP
+    EEI: EEI.toFixed(0),
+    erpGrade,
+    // 台灣 MEPS
+    MEPS: {
+      V_eq: tw.V_eq, EF_actual: tw.EF_actual, EF_base: tw.EF_base,
+      ratio_pct: tw.ratio_pct, pass: tw.pass,
+      V_R: tw_V_R, V_F: tw_V_F, star: tw_star,
+      isFanCooled: tw_cool, isLarge: tw.isLarge,
+      K_value: tw.K_value,
+      monthly_kWh: tw.monthly_kWh,
+    },
+    // VIP 分析
+    VIP: {
+      current_U: vip_U, current_ins_mm: vip_ins,
+      saving_mm: vip_analysis.saving_mm, saving_pct: vip_analysis.saving_pct,
+      PU_needed_mm: vip_analysis.PU_needed_mm, VIP_needed_mm: vip_analysis.VIP_needed_mm,
+    },
+    // 變頻分析
+    inverter: {
+      saving_pct: inv_pct, elec_price,
+      save_kWh_year: Math.round(inv_save),
+      save_cost_year: Math.round(inv_save * elec_price),
+    },
   };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
 }

@@ -372,18 +372,46 @@ function calcAll() {
   document.getElementById('final_vol_desc').textContent = `${V_R.toFixed(0)} L / ${V_F.toFixed(0)} L / 總計`;
   document.getElementById('results').style.display = 'block';
 
-  // 儲存到 localStorage
+  // 儲存到 localStorage（包含所有顯示值）
   const saved = {
+    // === 使用者輸入 ===
     width_mm: W, depth_mm: D, height_mm: H,
     T_o, RH, T_dp,
     R_pct,
-    R: { Ti: R_Ti, ins_mm: R_ins_mm, ins_type: R_ins_type, open_times: R_open_times, open_min: R_open_min,
-         light_W: R_light_W, fan_W: R_fan_W, defrost_W: R_defrost_W, defrost_times: R_defrost_times, defrost_min: R_defrost_min, door_ratio: R_door_ratio },
-    F: { Ti: F_Ti, ins_mm: F_ins_mm, ins_type: F_ins_type, open_times: F_open_times, open_min: F_open_min,
-         light_W: F_light_W, fan_W: F_fan_W, door_ratio: F_door_ratio },
-    vol: { V_R: V_R.toFixed(1), V_F: V_F.toFixed(1), V_total: V_total.toFixed(1), H_R: H_R.toFixed(0), H_F: H_F.toFixed(0) },
-    wall_R: { Q_W: R_wall.Q_W, U_wall: R_wall.U_wall },
-    wall_F: { Q_W: F_wall.Q_W, U_wall: F_wall.U_wall },
+    // === 冷藏室參數 ===
+    R: {
+      Ti: R_Ti, ins_mm: R_ins_mm, ins_type: R_ins_type,
+      open_times: R_open_times, open_min: R_open_min,
+      light_W: R_light_W, fan_W: R_fan_W,
+      defrost_W: R_defrost_W, defrost_times: R_defrost_times, defrost_min: R_defrost_min,
+      door_ratio: R_door_ratio,
+    },
+    // === 冷凍室參數 ===
+    F: {
+      Ti: F_Ti, ins_mm: F_ins_mm, ins_type: F_ins_type,
+      open_times: F_open_times, open_min: F_open_min,
+      light_W: F_light_W, fan_W: F_fan_W,
+      door_ratio: F_door_ratio,
+    },
+    // === 容積與幾何 ===
+    vol: {
+      V_R: V_R.toFixed(1), V_F: V_F.toFixed(1), V_total: V_total.toFixed(1),
+      H_R: H_R.toFixed(0), H_F: H_F.toFixed(0), H_mech: H_mech.toFixed(0),
+      V_eq: (V_R + 1.78 * V_F).toFixed(1),
+      inner_R: { w: Math.round(dims_R.w - 2*R_ins_mm), d: Math.round(dims_R.d - 2*R_ins_mm), h: Math.round(dims_R.h - 2*R_ins_mm) },
+      inner_F: { w: Math.round(dims_F.w - 2*F_ins_mm), d: Math.round(dims_F.d - 2*F_ins_mm), h: Math.round(dims_F.h - 2*F_ins_mm) },
+    },
+    // === 牆體熱負荷 ===
+    wall_R: {
+      Q_W: R_wall.Q_W, U_wall: R_wall.U_wall, U_door: R_wall.U_door,
+      A_total_m2: R_wall.A_total_m2, deltaT: R_wall.deltaT,
+    },
+    wall_F: {
+      Q_W: F_wall.Q_W, U_wall: F_wall.U_wall, U_door: F_wall.U_door,
+      A_total_m2: F_wall.A_total_m2, deltaT: F_wall.deltaT,
+    },
+    // === 防結露最小厚度 ===
+    min_ins: { R_mm: R_min_ins.toFixed(1), F_mm: F_min_ins.toFixed(1) },
   };
   localStorage.setItem('refrig_calc', JSON.stringify(saved));
 }
