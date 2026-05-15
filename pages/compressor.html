@@ -57,8 +57,8 @@
   <div class="section">
     <div class="section-title">壓縮機規格估算</div>
     <div class="comp-result">
-      <div class="big-number" id="disp_HP">- HP<span style="font-size:0.3em"> / <span id="disp_kW">- kW</span></span></div>
-      <div style="text-align:center;font-size:0.85em;color:#666;margin-top:4px;">建議壓縮機功率</div>
+      <div class="big-number" id="disp_HP">- HP</div>
+      <div style="text-align:center;font-size:0.85em;color:#666;margin-top:4px;">建議壓縮機功率 | <span id="disp_kW">- kW</span></div>
     </div>
 
     <div class="comp-result">
@@ -149,7 +149,7 @@ function calcCompressor() {
   document.getElementById('disp_COP_actual').textContent = result.COP_actual.toFixed(2);
 
   // 功率顯示
-  document.getElementById('disp_HP').innerHTML = result.P_HP + ' HP<small> / ' + result.P_kW + ' kW</small>';
+  document.getElementById('disp_HP').textContent = result.P_HP + ' HP';
   document.getElementById('disp_kW').textContent = result.P_kW + ' kW';
   document.getElementById('disp_Q_total').textContent = Q_total.toFixed(1) + ' W';
   document.getElementById('disp_P_in').textContent = result.P_input_W + ' W';

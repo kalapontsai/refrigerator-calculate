@@ -151,20 +151,25 @@ function calcCompartmentWallLoad(dims, ins_mm, lambda, Ti, To, doorAreaPct = 0.7
  * @param f 換氣係數（冷藏室=0.5, 冷凍室=0.3）
  */
 function calcDoorLoad(volume_L, Ti, To, openTimesPerDay = 15, openDurationMin = 0.5, f = 0.5) {
+  // 修復 falsy 問題：使用 nullish coalescing 確保 0 能正確傳遞
+  const times = openTimesPerDay == null ? 15 : openTimesPerDay;
+  const duration = openDurationMin == null ? 0.5 : openDurationMin;
+  const factor = f == null ? 0.5 : f;
   const rho_air = 1.2;    // kg/m³ @ 25°C
   const Cp_air = 1005;   // J/(kg·K)
   const latent_factor = 1.4; // 潛熱凝結補償係數（含水氣凝結潛熱）
   const V_m3 = volume_L / 1000;
   // 每次開門置換氣量 = V × f（換氣係數），乘上每日開門次數
-  const airExchanged_m3 = V_m3 * f * openTimesPerDay;
+  const airExchanged_m3 = V_m3 * factor * times;
   const delta_T = To - Ti;
   const Q_W = (airExchanged_m3 * rho_air * Cp_air * delta_T * latent_factor) / (24 * 3600);
   return {
     Q_W: parseFloat(Q_W.toFixed(2)),
     Q_kcalh: parseFloat((Q_W * 0.86).toFixed(2)),
     airExchanged_m3_day: parseFloat(airExchanged_m3.toFixed(2)),
-    f,
+    f: factor,
     latent_factor,
+    times,
   };
 }
 

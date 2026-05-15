@@ -309,8 +309,8 @@ function calcAll() {
   const R_ins_mm = parseFloat(document.getElementById('R_ins_mm').value) || 45;
   const R_ins_type = document.getElementById('R_ins_type').value;
   const R_lambda = RefrigCalc.INSULATION_TYPES[R_ins_type]?.lambda || 0.021;
-  const R_open_times = parseFloat(document.getElementById('R_open_times').value) || 20;
-  const R_open_min = parseFloat(document.getElementById('R_open_min').value) || 0.5;
+  const R_open_times = (() => { const v = parseFloat(document.getElementById('R_open_times').value); return isNaN(v) ? 20 : v; })();
+  const R_open_min = (() => { const v = parseFloat(document.getElementById('R_open_min').value); return isNaN(v) ? 0.5 : v; })();
   const R_light_W = parseFloat(document.getElementById('R_light_W').value) || 5;
   const R_fan_W = parseFloat(document.getElementById('R_fan_W').value) || 5;
   const R_defrost_W = parseFloat(document.getElementById('R_defrost_W').value) || 150;
@@ -323,8 +323,8 @@ function calcAll() {
   const F_ins_mm = parseFloat(document.getElementById('F_ins_mm').value) || 60;
   const F_ins_type = document.getElementById('F_ins_type').value;
   const F_lambda = RefrigCalc.INSULATION_TYPES[F_ins_type]?.lambda || 0.021;
-  const F_open_times = parseFloat(document.getElementById('F_open_times').value) || 5;
-  const F_open_min = parseFloat(document.getElementById('F_open_min').value) || 0.3;
+  const F_open_times = (() => { const v = parseFloat(document.getElementById('F_open_times').value); return isNaN(v) ? 5 : v; })();
+  const F_open_min = (() => { const v = parseFloat(document.getElementById('F_open_min').value); return isNaN(v) ? 0.3 : v; })();
   const F_light_W = parseFloat(document.getElementById('F_light_W').value) || 0;
   const F_fan_W = parseFloat(document.getElementById('F_fan_W').value) || 2;
   const F_door_ratio = parseFloat(document.getElementById('F_door_ratio').value) || 0.7;
