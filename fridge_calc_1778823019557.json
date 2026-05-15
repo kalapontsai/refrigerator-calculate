@@ -1,0 +1,170 @@
+{
+  "width_mm": 700,
+  "depth_mm": 650,
+  "height_mm": 1850,
+  "T_o": 30,
+  "RH": 69,
+  "T_dp": 23.67530121210438,
+  "R_pct": 0.55,
+  "R": {
+    "Ti": 5,
+    "ins_mm": 45,
+    "ins_type": "PU foam (cyclopentane)",
+    "open_times": 20,
+    "open_min": 0.5,
+    "light_W": 5,
+    "fan_W": 5,
+    "defrost_W": 150,
+    "defrost_times": 2,
+    "defrost_min": 20,
+    "door_ratio": 0.7
+  },
+  "F": {
+    "Ti": -18,
+    "ins_mm": 60,
+    "ins_type": "PU foam (cyclopentane)",
+    "open_times": 5,
+    "open_min": 0.3,
+    "light_W": 0,
+    "fan_W": 2,
+    "door_ratio": 0.7
+  },
+  "vol": {
+    "V_R": "316.8",
+    "V_F": "150.8",
+    "V_total": "467.6",
+    "H_R": "1018",
+    "H_F": "610",
+    "H_mech": "222",
+    "V_eq": "585.2",
+    "inner_R": {
+      "w": 610,
+      "d": 560,
+      "h": 928
+    },
+    "inner_F": {
+      "w": 580,
+      "d": 530,
+      "h": 490
+    }
+  },
+  "wall_R": {
+    "Q_W": 59.21,
+    "U_wall": 0.415,
+    "U_door": 0.7473,
+    "A_total_m2": 3.657,
+    "deltaT": 25
+  },
+  "wall_F": {
+    "Q_W": 62.5,
+    "U_wall": 0.3201,
+    "U_door": 0.5899,
+    "A_total_m2": 2.558,
+    "deltaT": 48
+  },
+  "min_ins": {
+    "R_mm": "8.6",
+    "F_mm": "22.0"
+  },
+  "Q": {
+    "Q_R": 1678.45,
+    "Q_F": 394.83,
+    "Q_total": 2073.28,
+    "safety_margin": {
+      "R_W": 218.93,
+      "F_W": 51.5
+    }
+  },
+  "Q_R_detail": {
+    "wall": 55.17,
+    "door": 1393.5,
+    "internal": 9.2,
+    "product": 1.66,
+    "safety_margin": 218.93
+  },
+  "Q_F_detail": {
+    "wall": 71.04,
+    "door": 268.16,
+    "internal": 2,
+    "product": 2.13,
+    "safety_margin": 51.5
+  },
+  "door_R": {
+    "Q_W": 1393.5,
+    "Q_kcalh": 1198.41,
+    "airExchanged_m3_day": 2852.36,
+    "f": 0.5,
+    "latent_factor": 1.4
+  },
+  "door_F": {
+    "Q_W": 268.16,
+    "Q_kcalh": 230.62,
+    "airExchanged_m3_day": 285.88,
+    "f": 0.3,
+    "latent_factor": 1.4
+  },
+  "internal_R": {
+    "light_W": 5,
+    "avg_light_W": 0.035,
+    "fan_W": 5,
+    "avg_defrost_W": 4.167,
+    "daily_light_hours": 0.17
+  },
+  "internal_F": {
+    "fan_W": 2
+  },
+  "compressor": {
+    "T_cond_C": 38,
+    "T_evap_C": -23,
+    "refrigerant": "R-600a",
+    "Q_cooling_W": "2073.3",
+    "P_input_W": "1391.5",
+    "P_HP": "1.000",
+    "P_kW": "1.39",
+    "COP_actual": 1.49,
+    "deltaT": 61,
+    "refName": "Isobutane（異丁烷）",
+    "refGWP": 3,
+    "compressorType": "reciprocating",
+    "compressorDesc": "往復式壓縮機"
+  },
+  "energy": {
+    "P_input_W": 50,
+    "runtime_factor": 0.6,
+    "AE_kWh_year": 263,
+    "per_L": "0.56",
+    "AE_std": 233,
+    "EEI": "113",
+    "erpGrade": "G",
+    "MEPS": {
+      "V_eq": "585.8",
+      "EF_actual": "26.75",
+      "EF_base": "25.44",
+      "ratio_pct": "105.2",
+      "pass": true,
+      "V_R": 317,
+      "V_F": 151,
+      "star": 3,
+      "isFanCooled": true,
+      "isLarge": true,
+      "K_value": 1.78,
+      "monthly_kWh": "21.9"
+    },
+    "VIP": {
+      "current_U": 0.415,
+      "current_ins_mm": 50,
+      "saving_mm": "34.3",
+      "saving_pct": "76.2",
+      "PU_needed_mm": "45.0",
+      "VIP_needed_mm": "10.7"
+    },
+    "inverter": {
+      "saving_pct": 0.3,
+      "elec_price": 4,
+      "save_kWh_year": 79,
+      "save_cost_year": 315
+    }
+  },
+  "_exportTime": "2026-05-15T05:30:19.557Z",
+  "_version": "2.0"
+}

@@ -198,9 +198,29 @@ function importJSON(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data.width_mm) throw new Error('Invalid format');
+      // 步驟1：匯入並儲存
       localStorage.setItem('refrig_calc', JSON.stringify(data));
-      alert('匯入成功！');
-      generateReport();
+      // 步驟2：依序在各頁觸發重新計算（從 Step 1 開始，因為它是 source）
+      // 每頁的 window.addEventListener('load') 會自動重新計算並寫入 localStorage
+      const pages = ['cabinet', 'cooling_load', 'compressor', 'energy', 'report'];
+      let idx = 0;
+      function nextPage() {
+        if (idx >= pages.length) {
+          alert('匯入成功！所有資料已重新計算。');
+          return;
+        }
+        // 使用 parent.goTo 導航（假設在 iframe 內）
+        if (parent.goTo) { parent.goTo(pages[idx]); }
+        else if (window.location.pathname.endsWith('report.html')) {
+          // 直接更換 parent location（萬一 report 是頂層）
+          const base = window.location.pathname.replace(/[^/]*$/,'');
+          window.parent.location.href = base + pages[idx] + '.html';
+        }
+        idx++;
+        // 延遲確保頁面載入完成再換下一頁
+        setTimeout(nextPage, 800);
+      }
+      nextPage();
     } catch(err) {
       alert('匯入失敗：' + err.message);
     }
