@@ -172,8 +172,8 @@ function generateReport() {
     setText('r_HP', c.P_HP != null ? c.P_HP + ' HP' : '- HP');
     setText('r_P_in', c.P_input_W != null ? c.P_input_W + ' W' : '- W');
     setText('r_COP', c.COP_actual != null ? String(c.COP_actual) : '-');
-    const AE_est = (parseFloat(c.P_input_W) / 1000) * 24 * 365 * runtime;
-    setText('r_AE', Number.isFinite(AE_est) ? Math.round(AE_est) + ' kWh/年' : '- kWh/年');
+    const AE_est = c.AE_kWh_year ?? (parseFloat(c.P_input_W) / 1000) * 24 * 365 * runtime;
+    setText('r_AE', Number.isFinite(AE_est) ? AE_est + ' kWh/年' : '- kWh/年');
   } else {
     setText('r_Temps', '- °C / - °C');
     setText('r_refrig', '-');
@@ -204,7 +204,7 @@ function generateReport() {
     const P_in = parseFloat(c.P_input_W);
     const rf = c.runtime_factor ?? ((s.F?.Ti != null && s.F.Ti < 0) ? 0.55 : 0.40);
     if (Number.isFinite(P_in) && P_in > 0) {
-      const AE_kWh = Math.round((P_in / 1000) * 24 * 365 * rf);
+      const AE_kWh = c.AE_kWh_year ?? Math.round((P_in / 1000) * 24 * 365 * rf);
       const V_total = (parseFloat(s.vol?.V_R) || 0) + (parseFloat(s.vol?.V_F) || 0);
       const AE_std = 124 + 0.233 * V_total;
       const EEI = Math.round((AE_kWh / AE_std) * 100);

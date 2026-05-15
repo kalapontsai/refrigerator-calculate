@@ -175,6 +175,7 @@ function calcCompressor() {
     T_cond_C: T_cond, T_evap_C: T_evap, refrigerant: ref,
     Q_total_W: parseFloat(Q_total.toFixed(2)),
     runtime_factor,
+    AE_kWh_year: Math.round(AE),
     ...result,
   };
   localStorage.setItem('refrig_calc', JSON.stringify(s));
